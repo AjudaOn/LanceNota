@@ -1,0 +1,521 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}Turma — LanceNotas{% endblock %}
+
+{% block content %}
+  <div class="mb-6">
+    <a
+      href="{{ url_for('pages.turmas') }}"
+      class="inline-flex items-center gap-2 mb-4 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 text-sm"
+    >
+      ← Voltar
+    </a>
+    <h1 class="text-3xl font-bold text-gray-900">Detalhe da Turma</h1>
+    <p class="text-gray-600 mt-2">Gerencie alunos, atividades e notas desta turma</p>
+  </div>
+
+  <div class="mb-6">
+    <div class="inline-flex items-center rounded-lg border border-gray-200 bg-white p-1">
+      <a
+        href="{{ url_for('pages.turma_detail', turma_id=turma.id, tab='detalhes') }}"
+        class="px-4 py-2 rounded-md text-sm font-medium {{ 'bg-blue-600 text-white' if tab == 'detalhes' else 'text-gray-700 hover:bg-gray-50' }}"
+      >
+        Detalhes da Turma
+      </a>
+      <a
+        href="{{ url_for('pages.turma_detail', turma_id=turma.id, tab='atividades', trimestre=current_trimestre) }}"
+        class="px-4 py-2 rounded-md text-sm font-medium {{ 'bg-blue-600 text-white' if tab == 'atividades' else 'text-gray-700 hover:bg-gray-50' }}"
+      >
+        Atividades
+      </a>
+    </div>
+  </div>
+
+  {% if error %}
+    <div class="mb-6 rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+      {{ error }}
+    </div>
+  {% endif %}
+
+  {% if import_status == "ok" %}
+    <div class="mb-6 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
+      Importação concluída: {{ imported or 0 }} aluno(s) adicionados.
+    </div>
+  {% elif import_status == "ok_mismatch" %}
+    <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3 text-sm">
+      Importação concluída ({{ imported or 0 }} aluno(s)). Atenção: o PDF pode ser de outra turma.
+      {% if import_mismatch %}
+        <div class="mt-1 text-xs text-amber-800/90">
+          Divergências detectadas: {{ import_mismatch.replace(",", ", ") }}.
+        </div>
+      {% endif %}
+    </div>
+  {% elif import_status == "missing" %}
+    <div class="mb-6 rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+      Selecione um arquivo PDF para importar.
+    </div>
+  {% elif import_status == "invalid" %}
+    <div class="mb-6 rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+      Arquivo inválido. Envie um PDF.
+    </div>
+  {% elif import_status == "parse_error" %}
+    <div class="mb-6 rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+      Não foi possível ler esse PDF. Se puder, envie outro modelo (ou uma foto/print do PDF).
+    </div>
+  {% endif %}
+
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+    <div class="bg-white border border-gray-200 rounded-xl p-4">
+      <div class="text-sm font-medium text-gray-600">Alunos</div>
+      <div class="text-2xl font-bold mt-2">{{ alunos_count }}</div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-xl p-4">
+      <div class="text-sm font-medium text-gray-600">Atividades</div>
+      <div class="text-2xl font-bold mt-2">{{ atividades_count }}</div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-xl p-4">
+      <div class="text-sm font-medium text-gray-600">Média Geral</div>
+      <div class="text-2xl font-bold mt-2">-</div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-xl p-4">
+      <div class="text-sm font-medium text-gray-600">Avaliações</div>
+      <div class="text-2xl font-bold mt-2">0</div>
+    </div>
+  </div>
+
+  {% if tab == "detalhes" %}
+    <div class="bg-white border border-gray-200 rounded-xl p-4 mb-8">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900">Resumo por Trimestre</h2>
+          <p class="text-sm text-gray-600 mt-1">Parcial das notas por aluno (0–10)</p>
+        </div>
+
+        <div class="bg-white border-2 border-dashed border-gray-300 hover:border-green-500 rounded-xl cursor-pointer transition-colors p-0 text-center overflow-hidden">
+          <form
+            method="post"
+            action="{{ url_for('pages.turma_importar_alunos_pdf', turma_id=turma.id) }}"
+            enctype="multipart/form-data"
+            class="h-full px-4 py-2 flex items-center justify-center"
+          >
+            <input type="hidden" name="tab" value="detalhes" />
+            <label class="flex items-center gap-2 cursor-pointer w-full">
+              <div class="text-green-700 text-sm font-medium">Importar alunos (PDF)</div>
+              <input name="pdf" type="file" accept="application/pdf" class="hidden" onchange="this.form.submit()" />
+            </label>
+          </form>
+        </div>
+      </div>
+
+      <div class="mt-4 overflow-x-auto border border-gray-200 rounded-xl">
+        <table class="min-w-full text-sm bg-white">
+          <thead class="bg-gray-50 text-gray-700">
+            <tr>
+              <th class="text-left font-semibold px-4 py-3 w-20">Nº</th>
+              <th class="text-left font-semibold px-4 py-3">Aluno</th>
+              <th class="text-left font-semibold px-4 py-3 w-28">1º Trim</th>
+              <th class="text-left font-semibold px-4 py-3 w-28">2º Trim</th>
+              <th class="text-left font-semibold px-4 py-3 w-28">3º Trim</th>
+              <th class="text-left font-semibold px-4 py-3 w-28">4º Trim</th>
+              <th class="text-left font-semibold px-4 py-3 w-28">Total</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {% for a in alunos %}
+              {% set row = detalhes_notas.get(a.id, {}) %}
+              <tr class="hover:bg-gray-50/60">
+                <td class="px-4 py-3 text-gray-700">
+                  {{ a.numero_chamada if a.numero_chamada is not none else "-" }}
+                </td>
+                <td class="px-4 py-3 font-medium text-gray-900">
+                  {{ a.nome_completo }}
+                </td>
+                {% for key in ["t1", "t2", "t3", "t4", "total"] %}
+                  {% set val = row.get(key) %}
+                  <td class="px-4 py-3 font-semibold {{ 'text-gray-900' if val is not none else 'text-gray-400' }}">
+                    {{ val if val is not none else "-" }}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if tab == "atividades" %}
+    <div class="bg-white border border-gray-200 rounded-xl p-4 mb-8">
+      <div class="flex flex-col md:flex-row md:items-center gap-3 justify-between">
+        <div class="flex-1">
+          <div class="text-sm font-medium text-gray-600">Atividade</div>
+          {% set atividades_list = atividades or [] %}
+          {% if atividades_list|length > 0 %}
+            <div class="mt-2 flex items-center gap-3">
+              <select
+                class="w-full md:w-[420px] border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onchange="if(this.value){ window.location = this.value; }"
+              >
+                {% for a in atividades_list %}
+                  <option
+                    value="{{ url_for('pages.turma_detail', turma_id=turma.id, tab='atividades', trimestre=current_trimestre, atividade_id=a.id, aula=1) }}"
+                    {% if selected_atividade and a.id == selected_atividade.id %}selected{% endif %}
+                  >
+                    {{ a.titulo }} ({{ a.aulas_planejadas }} aula{{ 's' if a.aulas_planejadas != 1 else '' }})
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+          {% else %}
+            <div class="mt-2 text-sm text-gray-600">Nenhuma atividade neste trimestre.</div>
+          {% endif %}
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            id="open-create-atividade"
+            type="button"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-4 py-2 inline-flex items-center justify-center"
+          >
+            ＋ Criar atividade
+          </button>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if tab == "atividades" and selected_atividade %}
+    <div class="space-y-4 mb-8">
+      <div class="bg-white border border-gray-200 rounded-xl p-4">
+        <details>
+          <summary class="cursor-pointer select-none">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">Configuração da atividade</h2>
+                <p class="text-sm text-gray-600 mt-1">Nome, planejamento e datas das aulas</p>
+              </div>
+              <div class="text-sm text-gray-600">
+                {{ selected_atividade.aulas_planejadas }} aula{{ 's' if selected_atividade.aulas_planejadas != 1 else '' }}
+              </div>
+            </div>
+          </summary>
+
+          <form
+            method="post"
+            action="{{ url_for('pages.turma_configurar_atividade', turma_id=turma.id, atividade_id=selected_atividade.id) }}"
+            class="mt-4 space-y-3"
+          >
+            <input type="hidden" name="trimestre" value="{{ current_trimestre }}" />
+            <input type="hidden" name="aula" value="{{ selected_aula_num or 1 }}" />
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="md:col-span-1">
+                <label class="block text-xs font-medium text-gray-700">Nome da atividade</label>
+                <input
+                  name="titulo"
+                  value="{{ selected_atividade.titulo }}"
+                  class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-medium text-gray-700">Descrição (opcional)</label>
+                <input
+                  name="descricao"
+                  value="{{ selected_atividade.descricao or '' }}"
+                  class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <div class="text-sm font-bold text-gray-900 mb-2">Planejamento</div>
+                <label class="block text-xs font-medium text-gray-700">Aulas planejadas</label>
+                <input
+                  id="planejamento-aulas-planejadas"
+                  name="aulas_planejadas"
+                  type="number"
+                  min="1"
+                  value="{{ selected_atividade.aulas_planejadas }}"
+                  class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div class="md:col-span-2 flex items-end justify-end">
+                <div class="text-xs text-gray-500">
+                  Dica: se reduzir aulas e houver lançamentos nas últimas aulas, o sistema bloqueia.
+                </div>
+              </div>
+            </div>
+
+            <div class="border-t border-gray-200 pt-3">
+              <div class="text-xs font-medium text-gray-700 mb-2">Datas das aulas</div>
+              <div id="datas-aulas-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {% for aula in selected_aulas %}
+                  <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    <div class="text-xs font-semibold text-gray-700 mb-2">Aula {{ aula.numero }}</div>
+                    <input
+                      name="data_aula_{{ aula.numero }}"
+                      type="date"
+                      value="{{ aula.data.isoformat() if aula.data else '' }}"
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="pt-2 flex items-center justify-end">
+              <button class="bg-gray-900 hover:bg-black text-white font-medium rounded-lg px-4 py-2" type="submit">
+                Salvar configuração
+              </button>
+            </div>
+          </form>
+        </details>
+      </div>
+
+      <div class="bg-white border border-gray-200 rounded-xl p-4">
+        <details open>
+          <summary class="cursor-pointer select-none">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">Lançar nota do dia</h2>
+                <p class="text-sm text-gray-600 mt-1">
+                  {{ selected_atividade.titulo }} — Aula {{ selected_aula_num }} / {{ selected_atividade.aulas_planejadas }}
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                {% for aula in selected_aulas %}
+                  <a
+                    href="{{ url_for('pages.turma_detail', turma_id=turma.id, tab='atividades', trimestre=current_trimestre, atividade_id=selected_atividade.id, aula=aula.numero) }}"
+                    class="px-3 py-1.5 rounded-lg border text-sm {{ 'bg-blue-600 text-white border-blue-600' if aula.numero == selected_aula_num else 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}"
+                  >
+                    Aula {{ aula.numero }}
+                  </a>
+                {% endfor %}
+              </div>
+            </div>
+          </summary>
+
+          <form
+            method="post"
+            action="{{ url_for('pages.turma_salvar_lancamentos', turma_id=turma.id, atividade_id=selected_atividade.id, aula_num=selected_aula_num) }}"
+            class="mt-4"
+          >
+            <input type="hidden" name="trimestre" value="{{ current_trimestre }}" />
+            <div class="overflow-x-auto border border-gray-200 rounded-xl">
+              <table class="min-w-full text-sm bg-white">
+                <thead class="bg-gray-50 text-gray-700">
+                  <tr>
+                    <th class="text-left font-semibold px-4 py-3 w-20">Nº</th>
+                    <th class="text-left font-semibold px-4 py-3">Aluno</th>
+                    <th class="text-left font-semibold px-4 py-3 w-36">Falta justificada</th>
+                    <th class="text-left font-semibold px-4 py-3 w-28">Nota (0–10)</th>
+                    <th class="text-left font-semibold px-4 py-3">Observação</th>
+                    <th class="text-left font-semibold px-4 py-3 w-24">Média</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  {% for a in alunos %}
+                    {% set lanc = lancamentos_by_aluno.get(a.id) %}
+                    <tr class="hover:bg-gray-50/60 align-top">
+                      <td class="px-4 py-3 text-gray-700">
+                        {{ a.numero_chamada if a.numero_chamada is not none else "-" }}
+                      </td>
+                      <td class="px-4 py-3 font-medium text-gray-900">
+                        {{ a.nome_completo }}
+                      </td>
+                      <td class="px-4 py-3 text-center align-middle">
+                        <label class="inline-flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            name="atestado_{{ a.id }}"
+                            {% if lanc and lanc.atestado %}checked{% endif %}
+                            class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            data-atestado-checkbox="{{ a.id }}"
+                          />
+                        </label>
+                      </td>
+                      <td class="px-4 py-3">
+                        <input
+                          name="nota_{{ a.id }}"
+                          inputmode="decimal"
+                          placeholder="0"
+                          value="{% if lanc and lanc.nota is not none %}{{ ('%.2f' % lanc.nota).rstrip('0').rstrip('.') }}{% else %}{% endif %}"
+                          class="w-24 border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          data-nota-input="{{ a.id }}"
+                        />
+                      </td>
+                      <td class="px-4 py-3">
+                        <input
+                          name="obs_{{ a.id }}"
+                          placeholder="Observação (opcional)"
+                          value="{{ lanc.observacao if lanc and lanc.observacao else '' }}"
+                          class="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </td>
+                      {% set media_val = medias_by_aluno.get(a.id) %}
+                      <td class="px-4 py-3 font-semibold {{ 'text-gray-900' if media_val is not none else 'text-gray-400' }}">
+                        {{ media_val if media_val is not none else '-' }}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="mt-4 flex items-center justify-end">
+              <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-5 py-2.5">
+                Salvar lançamentos
+              </button>
+            </div>
+          </form>
+        </details>
+      </div>
+    </div>
+  {% endif %}
+
+  {# Detalhes da turma: a tabela de resumo já é a lista principal. #}
+
+  <div id="create-atividade-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/50" id="create-atividade-backdrop"></div>
+    <div class="relative h-full flex items-center justify-center p-4">
+      <div class="w-full max-w-lg bg-white rounded-xl shadow-xl border border-gray-200">
+        <div class="p-6 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-900">Criar Atividade</h2>
+          <p class="text-sm text-gray-500 mt-1">Defina o título e quantas aulas serão usadas</p>
+        </div>
+
+        <form method="post" action="{{ url_for('pages.turma_criar_atividade', turma_id=turma.id) }}" class="p-6 space-y-4">
+          <input type="hidden" name="trimestre" value="{{ current_trimestre }}" />
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Título *</label>
+            <input
+              name="titulo"
+              placeholder="Ex: Montar figurinos de papel para um desfile"
+              class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Descrição (opcional)</label>
+            <textarea
+              name="descricao"
+              rows="3"
+              class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Detalhes da atividade, critérios, etc."
+            ></textarea>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Quantidade de aulas *</label>
+              <input
+                name="aulas_planejadas"
+                type="number"
+                min="1"
+                value="10"
+                class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+            <div class="flex items-end gap-2">
+              <button type="button" id="close-create-atividade" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 hover:bg-gray-50">
+                Cancelar
+              </button>
+              <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 py-2">
+                Criar
+              </button>
+            </div>
+          </div>
+
+          <div class="text-xs text-gray-500">
+            Dica: depois de criar, você pode preencher as datas das aulas no “Planejamento”.
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const modal = document.getElementById("create-atividade-modal");
+      const openBtn = document.getElementById("open-create-atividade");
+      const closeBtn = document.getElementById("close-create-atividade");
+      const backdrop = document.getElementById("create-atividade-backdrop");
+
+      function open() { if (modal) modal.classList.remove("hidden"); }
+      function close() { if (modal) modal.classList.add("hidden"); }
+
+      if (openBtn) openBtn.addEventListener("click", open);
+      if (closeBtn) closeBtn.addEventListener("click", close);
+      if (backdrop) backdrop.addEventListener("click", close);
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+
+      // Planejamento: ao aumentar "aulas planejadas", mostrar campos de data imediatamente.
+      const aulasInput = document.getElementById("planejamento-aulas-planejadas");
+      const datasGrid = document.getElementById("datas-aulas-grid");
+
+      function clampInt(v, min, max) {
+        const n = Number.parseInt(String(v || ""), 10);
+        if (Number.isNaN(n)) return min;
+        return Math.max(min, Math.min(max, n));
+      }
+
+      function renderDatasAulas(targetCount) {
+        if (!datasGrid) return;
+
+        const existing = {};
+        datasGrid.querySelectorAll("input[type='date'][name^='data_aula_']").forEach((el) => {
+          existing[el.name] = el.value || "";
+        });
+
+        datasGrid.innerHTML = "";
+        for (let i = 1; i <= targetCount; i++) {
+          const wrapper = document.createElement("div");
+          wrapper.className = "rounded-lg border border-gray-200 bg-gray-50 p-3";
+
+          const label = document.createElement("div");
+          label.className = "text-xs font-semibold text-gray-700 mb-2";
+          label.textContent = `Aula ${i}`;
+
+          const input = document.createElement("input");
+          input.name = `data_aula_${i}`;
+          input.type = "date";
+          input.value = existing[`data_aula_${i}`] || "";
+          input.className =
+            "w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm";
+
+          wrapper.appendChild(label);
+          wrapper.appendChild(input);
+          datasGrid.appendChild(wrapper);
+        }
+      }
+
+      if (aulasInput && datasGrid) {
+        aulasInput.addEventListener("input", () => {
+          const target = clampInt(aulasInput.value, 1, 50);
+          if (String(target) !== String(aulasInput.value || "")) aulasInput.value = String(target);
+          renderDatasAulas(target);
+        });
+      }
+
+      // Lançamentos: se marcar "Falta justificada", desabilita a nota.
+      document.querySelectorAll("input[type='checkbox'][data-atestado-checkbox]").forEach((cb) => {
+        const id = cb.getAttribute("data-atestado-checkbox");
+        const notaInput = document.querySelector("input[data-nota-input='" + id + "']");
+        function sync() {
+          if (!notaInput) return;
+          const on = cb.checked;
+          notaInput.disabled = on;
+          if (on) notaInput.value = "";
+          notaInput.classList.toggle("bg-gray-50", on);
+          notaInput.classList.toggle("text-gray-400", on);
+        }
+        cb.addEventListener("change", sync);
+        sync();
+      });
+    })();
+  </script>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}Dashboard — LanceNotas{% endblock %}
+
+{% block content %}
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">
+      Bem-vindo, {{ (current_user.nome.split(' ')[0] if current_user.is_authenticated and current_user.nome else 'Professor') }}!
+    </h1>
+    <p class="text-gray-600 mt-2">Aqui está um resumo da sua atividade acadêmica</p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="bg-white border border-gray-200 rounded-xl hover:shadow-lg transition-shadow p-4">
+      <div class="flex items-center justify-between">
+        <div class="text-sm font-medium text-gray-600">Turmas Ativas</div>
+        <div class="p-2 bg-blue-100 rounded-lg">📚</div>
+      </div>
+      <div class="text-2xl font-bold text-gray-900 mt-3">{{ turmas_ativas or 0 }}</div>
+      <p class="text-xs text-gray-500 mt-2">Turmas em andamento</p>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-xl hover:shadow-lg transition-shadow p-4">
+      <div class="flex items-center justify-between">
+        <div class="text-sm font-medium text-gray-600">Total de Alunos</div>
+        <div class="p-2 bg-green-100 rounded-lg">👥</div>
+      </div>
+      <div class="text-2xl font-bold text-gray-900 mt-3">{{ total_alunos or 0 }}</div>
+      <p class="text-xs text-gray-500 mt-2">Matriculados em suas turmas</p>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-xl hover:shadow-lg transition-shadow p-4">
+      <div class="flex items-center justify-between">
+        <div class="text-sm font-medium text-gray-600">Avaliações Pendentes</div>
+        <div class="p-2 bg-orange-100 rounded-lg">📝</div>
+      </div>
+      <div class="text-2xl font-bold text-gray-900 mt-3">{{ avaliacoes_pendentes or 0 }}</div>
+      <p class="text-xs text-gray-500 mt-2">Notas ainda não lançadas</p>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-xl hover:shadow-lg transition-shadow p-4">
+      <div class="flex items-center justify-between">
+        <div class="text-sm font-medium text-gray-600">Desempenho</div>
+        <div class="p-2 bg-purple-100 rounded-lg">📈</div>
+      </div>
+      <div class="text-2xl font-bold text-gray-900 mt-3">
+        {% if desempenho_media is not none %}
+          {{ desempenho_media }}/10
+        {% else %}
+          -
+        {% endif %}
+      </div>
+      <p class="text-xs text-gray-500 mt-2">Média geral (parcial)</p>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="p-6 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Desempenho por turma</h2>
+      <p class="text-sm text-gray-500 mt-1">Ordenado do maior para o menor (parcial, até as aulas realizadas)</p>
+    </div>
+
+    {% set rows = desempenho_por_turma or [] %}
+    {% if rows|length == 0 %}
+      <div class="p-6 text-sm text-gray-500">Nenhuma turma com dados suficientes para calcular desempenho.</div>
+    {% else %}
+      <div class="mt-4 px-4 pb-4">
+        <div class="overflow-x-auto">
+          <div class="inline-block min-w-max border border-gray-200 rounded-xl overflow-hidden mx-auto">
+          <table class="w-max table-auto text-sm bg-white mx-auto">
+          <thead class="bg-gray-50 text-gray-700">
+            <tr>
+              <th class="text-center font-semibold px-3 py-3 w-16">#</th>
+              <th class="text-center font-semibold px-3 py-3 w-64">Turma</th>
+              <th class="text-center font-semibold px-3 py-3 w-24">Alunos</th>
+              <th class="text-center font-semibold px-3 py-3 w-28">Pendentes</th>
+              <th class="text-center font-semibold px-3 py-3 w-24">Média</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {% for t in rows %}
+              {% set serie_nome = (t.serie or '').replace(' Ano', '') %}
+              <tr class="hover:bg-gray-50/60">
+                <td class="px-3 py-3 font-semibold text-gray-900 text-center">{{ loop.index }}</td>
+                <td class="px-3 py-3 max-w-64 text-center">
+                  <a
+                    href="{{ url_for('pages.turma_detail', turma_id=t.id, tab='detalhes') }}"
+                    class="inline-flex flex-col items-center hover:underline whitespace-normal"
+                  >
+                    <div class="font-semibold text-gray-900">
+                      {{ (serie_nome ~ ' ' ~ (t.turma_letra or '')).strip() }}
+                    </div>
+                    <div class="text-xs text-gray-500">{{ t.disciplina or 'Sem disciplina' }}</div>
+                  </a>
+                </td>
+                <td class="px-3 py-3 font-semibold text-gray-900 text-center">{{ t.alunos or 0 }}</td>
+                <td class="px-3 py-3 font-semibold text-gray-900 text-center">{{ t.pendentes or 0 }}</td>
+                <td class="px-3 py-3 font-semibold text-center {{ 'text-gray-900' if t.media is not none else 'text-gray-400' }}">
+                  {% if t.media is not none %}
+                    {{ t.media }}/10
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

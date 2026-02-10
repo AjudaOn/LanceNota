@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Virtual envs
+.venv/
+venv/
+ENV/
+
+# Flask / local runtime
+instance/
+*.sqlite3
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Local agent tooling
+.agent/
+
+# Potentially sensitive uploads / exports
+*.pdf
+
+# Local working notes
+progress.md
+findings.md
+task_plan.md
+
+# Prompts / local reference files
+/IdeiadoSistema.txt
+/sobre_os_agentes.txt
+/Logo_lancenotas.png

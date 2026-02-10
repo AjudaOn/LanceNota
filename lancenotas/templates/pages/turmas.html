@@ -1,0 +1,477 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}Turmas — LanceNotas{% endblock %}
+
+{% block content %}
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Minhas Turmas</h1>
+    <p class="text-gray-600 mt-2">Gerencie suas turmas, alunos e atividades</p>
+  </div>
+
+  {% if error %}
+    <div class="mb-6 rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+      {{ error }}
+    </div>
+  {% endif %}
+
+  <div class="flex flex-col md:flex-row gap-4 mb-8">
+    <form class="flex-1 relative" method="get" action="{{ url_for('pages.turmas') }}">
+      <span class="absolute left-3 top-3 text-gray-400">🔎</span>
+      <input
+        name="q"
+        value="{{ q or '' }}"
+        placeholder="Buscar turma por nome ou disciplina..."
+        class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </form>
+
+    <button
+      id="open-create-turma"
+      type="button"
+      class="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-4 py-2 flex items-center justify-center"
+    >
+      <span class="mr-2">＋</span>
+      Criar Turma
+    </button>
+  </div>
+
+  {% set turmas_list = turmas or [] %}
+
+  {% if turmas_list|length > 0 %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for turma in turmas_list %}
+        <a
+          href="{{ url_for('pages.turma_detail', turma_id=turma.id) }}"
+          class="bg-white border border-gray-200 rounded-xl hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02] block"
+        >
+          <div class="p-6">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex-1">
+                {% set serie_nome = (turma.serie or '').replace(' Ano', '') %}
+                <div class="text-lg font-semibold text-gray-900">
+                  {{ (serie_nome ~ ' ' ~ (turma.turma_letra or '')).strip() }}
+                </div>
+                <div class="text-sm text-gray-500">{{ turma.disciplina or "Sem disciplina" }}</div>
+              </div>
+
+              <div class="relative" onclick="event.preventDefault(); event.stopPropagation();">
+                <button
+                  type="button"
+                  class="w-9 h-9 inline-flex items-center justify-center rounded-lg hover:bg-gray-100"
+                  data-menu-button="turma-{{ turma.id }}"
+                  aria-label="Mais opções"
+                >
+                  ⋮
+                </button>
+                <div
+                  class="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg hidden z-10"
+                  data-menu="turma-{{ turma.id }}"
+                >
+                  <button
+                    type="button"
+                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    data-edit-turma="1"
+                    data-turma-id="{{ turma.id }}"
+                    data-serie="{{ turma.serie or '' }}"
+                    data-turma-letra="{{ turma.turma_letra or '' }}"
+                    data-disciplina="{{ turma.disciplina or '' }}"
+                    data-ano-letivo="{{ turma.ano_letivo or 2026 }}"
+                    data-horarios='{{ (turma.horarios or [])|tojson }}'
+                  >
+                    ✏️ Editar
+                  </button>
+                  <form method="post" action="{{ url_for('pages.turma_delete', turma_id=turma.id) }}">
+                    <button class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50" type="submit">
+                      🗑️ Deletar
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-3 mt-4">
+              <div class="grid grid-cols-2 gap-3 pt-3 border-t border-gray-200">
+                <div class="flex items-center gap-2">
+                  <span class="text-blue-600">👥</span>
+                  <div>
+                    <p class="text-xs text-gray-500">Alunos</p>
+                    <p class="text-lg font-bold text-gray-900">{{ turma.alunos_count or 0 }}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-green-600">📘</span>
+                  <div>
+                    <p class="text-xs text-gray-500">Atividades</p>
+                    <p class="text-lg font-bold text-gray-900">{{ turma.atividades_count or 0 }}</p>
+                  </div>
+                </div>
+              </div>
+
+              {% set horarios = turma.horarios or [] %}
+              {% if horarios|length > 0 %}
+                <div class="pt-3 border-t border-gray-200 text-sm text-gray-600">
+                  <div class="font-medium">Horários:</div>
+                  {% set day_map = {0:'Seg',1:'Ter',2:'Qua',3:'Qui',4:'Sex',5:'Sáb',6:'Dom'} %}
+                  <div class="mt-1 space-y-1">
+                    {% for h in horarios %}
+                      <div class="inline-flex items-center gap-1">
+                        {{ day_map.get(h.dia_semana, h.dia_semana) }} {{ h.hora }} ({{ h.periodo }})
+                      </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="bg-white border border-gray-200 rounded-xl text-center py-12">
+      <div class="px-6">
+        <div class="text-5xl mb-4 text-gray-300">📚</div>
+        <h3 class="font-semibold text-gray-900 mb-2">Nenhuma turma encontrada</h3>
+        <p class="text-sm text-gray-500 mb-4">
+          {% if q %}
+            Nenhuma turma corresponde à sua busca
+          {% else %}
+            Comece criando sua primeira turma
+          {% endif %}
+        </p>
+        <button
+          id="open-create-turma-empty"
+          type="button"
+          class="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-4 py-2 inline-flex items-center justify-center"
+        >
+          <span class="mr-2">＋</span>
+          Criar Turma
+        </button>
+      </div>
+    </div>
+  {% endif %}
+
+  <div id="create-turma-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/50" id="create-turma-backdrop"></div>
+    <div class="relative h-full flex items-center justify-center p-4">
+      <div class="w-full max-w-lg bg-white rounded-xl shadow-xl border border-gray-200">
+        <div class="p-6 border-b border-gray-200">
+          <h2 id="turma-modal-title" class="text-lg font-semibold text-gray-900">Criar Nova Turma</h2>
+          <p id="turma-modal-subtitle" class="text-sm text-gray-500 mt-1">Adicione uma nova turma com nome, disciplina e série</p>
+        </div>
+
+        <form id="turma-modal-form" method="post" action="{{ url_for('pages.turmas') }}" class="p-6 space-y-4">
+          <input id="turma_id" name="turma_id" type="hidden" value="" />
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="serie">Série *</label>
+            <select
+              id="serie"
+              name="serie"
+              class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="" selected>Selecione…</option>
+              <option value="5º">5º ano</option>
+              <option value="6º">6º ano</option>
+              <option value="7º">7º ano</option>
+              <option value="8º">8º ano</option>
+              <option value="9º">9º ano</option>
+              <option value="1º Ano">1º ano</option>
+              <option value="2º Ano">2º ano</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700" for="turma_letra">Turma *</label>
+              <select
+                id="turma_letra"
+                name="turma_letra"
+                class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="" selected>Selecione…</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+                <option value="E">E</option>
+                <option value="F">F</option>
+                <option value="G">G</option>
+                <option value="H">H</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="disciplina">Disciplina</label>
+            <input
+              id="disciplina"
+              name="disciplina"
+              placeholder="Ex: Artes"
+              class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+
+          <div class="rounded-lg border border-gray-200 bg-white px-4 py-4">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="text-sm font-semibold text-gray-900">Dias e horários</div>
+                <div class="text-xs text-gray-500 mt-1">Ex: Segunda 14:30 e Sexta 16:25</div>
+              </div>
+              <button id="add-horario" type="button" class="text-sm px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                ＋ Adicionar
+              </button>
+            </div>
+            <div id="horarios-list" class="mt-3 space-y-2"></div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="ano_serie">Ano/Série</label>
+            <input id="ano_serie" value="Preenchido automaticamente" disabled class="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-gray-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="ano_letivo">Ano Letivo</label>
+            <input
+              id="ano_letivo"
+              name="ano_letivo"
+              type="number"
+              inputmode="numeric"
+              value="2026"
+              class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
+            <div class="text-xs text-gray-500 font-semibold mb-1">Nome da Turma (gerado)</div>
+            <div id="turma-preview" class="font-semibold text-gray-900">—</div>
+          </div>
+
+          <div class="pt-2 flex items-center justify-end gap-2">
+            <button id="close-create-turma" type="button" class="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button id="turma-modal-submit" type="submit" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium">
+              Criar Turma
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var modal = document.getElementById("create-turma-modal");
+      var form = document.getElementById("turma-modal-form");
+      var titleEl = document.getElementById("turma-modal-title");
+      var subtitleEl = document.getElementById("turma-modal-subtitle");
+      var submitEl = document.getElementById("turma-modal-submit");
+      var turmaIdEl = document.getElementById("turma_id");
+      var horariosList = document.getElementById("horarios-list");
+      var addHorarioBtn = document.getElementById("add-horario");
+
+      function addHorarioRow(dia, hora, periodo) {
+        if (!horariosList) return;
+        var wrapper = document.createElement("div");
+        wrapper.className = "flex items-center gap-2";
+
+        var periodoSelect = document.createElement("select");
+        periodoSelect.name = "horario_periodo";
+        periodoSelect.className = "w-28 border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm";
+        var periodOpts = [
+          ["", "Período"],
+          ["Manhã", "Manhã"],
+          ["Tarde", "Tarde"],
+          ["Noite", "Noite"],
+        ];
+        periodOpts.forEach(function (o) {
+          var op = document.createElement("option");
+          op.value = o[0];
+          op.textContent = o[1];
+          periodoSelect.appendChild(op);
+        });
+        if (periodo) periodoSelect.value = String(periodo);
+
+        var select = document.createElement("select");
+        select.name = "horario_dia";
+        select.className = "w-36 border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm";
+        var opts = [
+          ["", "Dia"],
+          ["0", "Segunda"],
+          ["1", "Terça"],
+          ["2", "Quarta"],
+          ["3", "Quinta"],
+          ["4", "Sexta"],
+          ["5", "Sábado"],
+          ["6", "Domingo"],
+        ];
+        opts.forEach(function (o) {
+          var op = document.createElement("option");
+          op.value = o[0];
+          op.textContent = o[1];
+          select.appendChild(op);
+        });
+        if (dia !== undefined && dia !== null) select.value = String(dia);
+
+        var input = document.createElement("input");
+        input.name = "horario_hora";
+        input.placeholder = "HH:MM";
+        input.inputMode = "numeric";
+        input.className = "w-28 border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm";
+        if (hora) input.value = hora;
+
+        var removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "ml-auto px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 text-sm";
+        removeBtn.textContent = "Remover";
+        removeBtn.addEventListener("click", function () { wrapper.remove(); });
+
+        wrapper.appendChild(periodoSelect);
+        wrapper.appendChild(select);
+        wrapper.appendChild(input);
+        wrapper.appendChild(removeBtn);
+        horariosList.appendChild(wrapper);
+      }
+
+      function openModal() {
+        if (!modal) return;
+        if (titleEl) titleEl.textContent = "Criar Nova Turma";
+        if (subtitleEl) subtitleEl.textContent = "Adicione uma nova turma com nome, disciplina e série";
+        if (submitEl) submitEl.textContent = "Criar Turma";
+        if (turmaIdEl) turmaIdEl.value = "";
+        if (form) form.reset();
+        if (horariosList) horariosList.innerHTML = "";
+        addHorarioRow();
+        updatePreview();
+        modal.classList.remove("hidden");
+      }
+
+      function closeModal() {
+        if (!modal) return;
+        modal.classList.add("hidden");
+      }
+
+      var openBtn = document.getElementById("open-create-turma");
+      var openBtn2 = document.getElementById("open-create-turma-empty");
+      var closeBtn = document.getElementById("close-create-turma");
+      var backdrop = document.getElementById("create-turma-backdrop");
+
+      if (openBtn) openBtn.addEventListener("click", openModal);
+      if (openBtn2) openBtn2.addEventListener("click", openModal);
+      if (closeBtn) closeBtn.addEventListener("click", closeModal);
+      if (backdrop) backdrop.addEventListener("click", closeModal);
+
+      function openEditModal(btn) {
+        if (!modal) return;
+        if (titleEl) titleEl.textContent = "Editar Turma";
+        if (subtitleEl) subtitleEl.textContent = "Altere os dados da turma. O nome será recalculado.";
+        if (submitEl) submitEl.textContent = "Salvar alterações";
+
+        var turmaId = btn.getAttribute("data-turma-id") || "";
+        if (turmaIdEl) turmaIdEl.value = turmaId;
+
+        var serie = btn.getAttribute("data-serie") || "";
+        var turmaLetra = btn.getAttribute("data-turma-letra") || "";
+        var disciplina = btn.getAttribute("data-disciplina") || "";
+        var anoLetivo = btn.getAttribute("data-ano-letivo") || "2026";
+        var horariosJson = btn.getAttribute("data-horarios") || "[]";
+
+        var serieEl = document.getElementById("serie");
+        var turmaEl = document.getElementById("turma_letra");
+        var disciplinaEl = document.getElementById("disciplina");
+        var anoLetivoEl = document.getElementById("ano_letivo");
+
+        if (serieEl) serieEl.value = serie;
+        if (turmaEl) turmaEl.value = turmaLetra;
+        if (disciplinaEl) disciplinaEl.value = disciplina;
+        if (anoLetivoEl) anoLetivoEl.value = anoLetivo;
+
+        if (horariosList) horariosList.innerHTML = "";
+        var horarios = [];
+        try { horarios = JSON.parse(horariosJson) || []; } catch (e) { horarios = []; }
+        if (horarios.length === 0) {
+          addHorarioRow();
+        } else {
+          horarios.forEach(function (h) { addHorarioRow(h.dia_semana, h.hora, h.periodo); });
+        }
+
+        updatePreview();
+        modal.classList.remove("hidden");
+      }
+
+      function updatePreview() {
+        var serie = document.getElementById("serie");
+        var turma = document.getElementById("turma_letra");
+        var disciplina = document.getElementById("disciplina");
+        var preview = document.getElementById("turma-preview");
+
+        if (!serie || !turma || !disciplina || !preview) return;
+        var serieVal = serie.value;
+        var turmaVal = turma.value;
+        var disciplinaVal = disciplina.value.trim();
+
+        var periodos = [];
+        document.querySelectorAll('select[name="horario_periodo"]').forEach(function (el) {
+          var v = (el.value || "").trim();
+          if (v) periodos.push(v);
+        });
+        var periodosUnicos = Array.from(new Set(periodos));
+        var periodoVal = "";
+        if (periodosUnicos.length === 1) periodoVal = periodosUnicos[0];
+        else if (periodosUnicos.length > 1) periodoVal = periodosUnicos.join("/");
+
+        if (!serieVal || !turmaVal || !disciplinaVal || !periodoVal) {
+          preview.textContent = "—";
+          return;
+        }
+
+        if (serieVal === "1º Ano" || serieVal === "2º Ano") {
+          serieVal = serieVal.replace(" Ano", "");
+        }
+        preview.textContent = serieVal + " " + turmaVal + " - " + disciplinaVal + " - " + periodoVal;
+      }
+
+      ["serie", "turma_letra", "disciplina"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener("input", updatePreview);
+        if (el) el.addEventListener("change", updatePreview);
+      });
+      if (horariosList) {
+        horariosList.addEventListener("input", updatePreview);
+        horariosList.addEventListener("change", updatePreview);
+      }
+      updatePreview();
+
+      var menuButtons = document.querySelectorAll("[data-menu-button]");
+      menuButtons.forEach(function (b) {
+        b.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var key = b.getAttribute("data-menu-button");
+          var menu = document.querySelector('[data-menu=\"' + key + '\"]');
+          if (!menu) return;
+          menu.classList.toggle("hidden");
+        });
+      });
+
+      document.addEventListener("click", function () {
+        document.querySelectorAll("[data-menu]").forEach(function (m) {
+          if (!m.classList.contains("hidden")) m.classList.add("hidden");
+        });
+      });
+
+      document.querySelectorAll("[data-edit-turma]").forEach(function (btn) {
+        btn.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          openEditModal(btn);
+        });
+      });
+
+      if (addHorarioBtn) {
+        addHorarioBtn.addEventListener("click", function () {
+          addHorarioRow();
+        });
+      }
+    })();
+  </script>
+{% endblock %}

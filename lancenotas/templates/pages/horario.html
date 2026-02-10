@@ -1,0 +1,144 @@
+{% extends "layouts/app.html" %}
+
+{% block title %}Horário — LanceNotas{% endblock %}
+
+{% block content %}
+  <div class="mb-8">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Horário</h1>
+        <p class="text-gray-600 mt-2">Grade do professor por período</p>
+      </div>
+
+      <details class="group bg-white border border-gray-200 rounded-xl px-4 py-3 w-full max-w-md">
+        <summary class="cursor-pointer list-none flex items-center justify-between gap-3">
+          <div>
+            <div class="text-sm font-semibold text-gray-900">Adicionar HA</div>
+            <div class="text-xs text-gray-500">Hora Atividade (sem alunos)</div>
+          </div>
+          <div class="text-gray-400 group-open:rotate-180 transition-transform">⌄</div>
+        </summary>
+
+        <form method="post" action="{{ url_for('pages.horario_evento_create') }}" class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-600">Período</label>
+            <select name="periodo" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-sm">
+              <option value="Manhã">Manhã</option>
+              <option value="Tarde">Tarde</option>
+              <option value="Noite">Noite</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600">Dia</label>
+            <select name="dia_semana" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-sm">
+              <option value="0">Segunda</option>
+              <option value="1">Terça</option>
+              <option value="2">Quarta</option>
+              <option value="3">Quinta</option>
+              <option value="4">Sexta</option>
+              <option value="5">Sábado</option>
+              <option value="6">Domingo</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600">Hora</label>
+            <input name="hora" placeholder="HH:MM" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600">Título</label>
+            <input name="titulo" value="HA" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs font-medium text-gray-600">Subtítulo</label>
+            <input name="subtitulo" value="Hora Atividade" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+          </div>
+          <div class="md:col-span-2 flex justify-end">
+            <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm">
+              Adicionar
+            </button>
+          </div>
+        </form>
+      </details>
+    </div>
+  </div>
+
+  {% for period in periods %}
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-8">
+      <div class="p-6 border-b border-gray-200">
+        <h2 class="text-xl font-bold text-gray-900">{{ period }}</h2>
+        <p class="text-sm text-gray-500 mt-1">Turmas distribuídas por dia e horário</p>
+      </div>
+
+      {% set times = times_by_period.get(period, []) %}
+      {% if times|length == 0 %}
+        <div class="p-6 text-sm text-gray-500">Nenhum horário cadastrado para {{ period|lower }}.</div>
+      {% else %}
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-gray-700">
+              <tr>
+                <th class="text-center font-semibold px-4 py-3 w-28">HORA</th>
+                {% for d, label in dias_cols %}
+                  <th class="text-center font-semibold px-4 py-3">{{ label }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              {% for t in times %}
+                <tr class="align-top hover:bg-gray-50/60">
+                  <td class="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap text-center">{{ t }}</td>
+                  {% for d, _ in dias_cols %}
+                    {% set items = (grade.get(period, {}).get(t, {}).get(d, [])) %}
+                    <td class="px-4 py-3 min-w-[170px] text-center">
+                      {% if items|length == 0 %}
+                        <span class="text-gray-300">—</span>
+                      {% else %}
+                        <div class="flex flex-col gap-2 items-center">
+                          {% for turma in items %}
+                            {% if turma.is_event %}
+                              <div class="relative w-full max-w-[220px]">
+                                <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-center">
+                                  <div class="text-sm font-semibold text-amber-900 leading-tight">
+                                    {{ turma.display_title or turma.nome }}
+                                  </div>
+                                  {% if turma.display_subtitle %}
+                                    <div class="text-xs text-amber-800/80 mt-1 leading-tight">
+                                      {{ turma.display_subtitle }}
+                                    </div>
+                                  {% endif %}
+                                </div>
+                                <form method="post" action="{{ url_for('pages.horario_evento_delete', evento_id=turma.evento_id) }}" class="absolute -top-2 -right-2">
+                                  <button type="submit" class="w-7 h-7 rounded-full bg-white border border-gray-200 shadow hover:bg-gray-50 text-xs" title="Remover">
+                                    ✕
+                                  </button>
+                                </form>
+                              </div>
+                            {% else %}
+                              <a
+                                href="{{ url_for('pages.turma_detail', turma_id=turma.id, tab='detalhes') }}"
+                                class="block rounded-lg border border-gray-200 bg-white px-3 py-2 hover:border-blue-500 hover:bg-blue-50 transition-colors text-center w-full max-w-[220px]"
+                              >
+                                <div class="text-sm font-semibold text-gray-900 leading-tight">
+                                  {{ turma.display_title or turma.nome }}
+                                </div>
+                                {% if turma.display_subtitle %}
+                                  <div class="text-xs text-gray-600 mt-1 leading-tight">
+                                    {{ turma.display_subtitle }}
+                                  </div>
+                                {% endif %}
+                              </a>
+                            {% endif %}
+                          {% endfor %}
+                        </div>
+                      {% endif %}
+                    </td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+  {% endfor %}
+{% endblock %}

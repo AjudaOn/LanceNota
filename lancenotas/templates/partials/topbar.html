@@ -1,0 +1,113 @@
+<header class="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+  <div class="flex items-center justify-between h-16 px-4 lg:px-6">
+    <div class="flex items-center gap-4 flex-1">
+      <button id="sidebar-open" type="button" class="lg:hidden rounded-md p-2 hover:bg-gray-100">
+        ☰
+      </button>
+
+      {% if current_turma %}
+        <div class="hidden md:flex items-center gap-4">
+          <div>
+            <p class="text-xs text-gray-500 font-medium">TURMA SELECIONADA</p>
+            <p class="text-sm font-semibold text-gray-900">{{ current_turma.nome }}</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-500 font-medium">TRIMESTRE:</span>
+            <select
+              id="trimestre-select"
+              class="text-sm font-medium border border-gray-300 rounded-md px-3 py-1.5 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {% set t = current_trimestre or 1 %}
+              <option value="1" {{ 'selected' if t == 1 else '' }}>1º</option>
+              <option value="2" {{ 'selected' if t == 2 else '' }}>2º</option>
+              <option value="3" {{ 'selected' if t == 3 else '' }}>3º</option>
+              <option value="4" {{ 'selected' if t == 4 else '' }}>4º</option>
+            </select>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="flex items-center gap-4">
+      {% if current_user.is_authenticated and current_user.is_admin %}
+        <div class="hidden md:flex items-center">
+          <input
+            type="text"
+            placeholder="Buscar alunos, atividades..."
+            class="text-sm bg-gray-100 border border-gray-200 rounded-lg px-4 py-2 w-64 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+          />
+        </div>
+      {% endif %}
+
+      <div class="relative">
+        <button
+          id="user-menu-button"
+          type="button"
+          class="flex items-center gap-2 hover:bg-gray-100 rounded-md px-2 py-1.5"
+        >
+          <div class="hidden md:flex flex-col items-end">
+            <p class="text-sm font-medium text-gray-900">{{ current_user.nome if current_user.is_authenticated else 'Professor' }}</p>
+            <p class="text-xs text-gray-500">{{ current_user.email if current_user.is_authenticated else '' }}</p>
+          </div>
+          <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-medium text-sm">
+            {{ (current_user.nome[:1] if current_user.is_authenticated and current_user.nome else 'P') }}
+          </div>
+          <span class="text-gray-500 text-sm">▾</span>
+        </button>
+
+        <div
+          id="user-menu"
+          class="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg hidden"
+          role="menu"
+        >
+          {% if current_user.is_authenticated and current_user.is_admin %}
+            <a
+              class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              href="{{ url_for('pages.configuracoes') }}"
+            >
+              ⚙️ Configurações
+            </a>
+            <div class="border-t border-gray-100"></div>
+          {% endif %}
+          <form method="post" action="{{ url_for('auth.logout') }}">
+            <button class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50" type="submit">
+              ⎋ Sair
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<script>
+  (function () {
+    var btn = document.getElementById("user-menu-button");
+    var menu = document.getElementById("user-menu");
+    var trimestreSelect = document.getElementById("trimestre-select");
+
+    function toggle() {
+      if (!menu) return;
+      menu.classList.toggle("hidden");
+    }
+
+    function closeIfOutside(e) {
+      if (!menu || !btn) return;
+      if (menu.classList.contains("hidden")) return;
+      if (menu.contains(e.target) || btn.contains(e.target)) return;
+      menu.classList.add("hidden");
+    }
+
+    if (btn) btn.addEventListener("click", toggle);
+    document.addEventListener("click", closeIfOutside);
+
+    if (trimestreSelect) {
+      trimestreSelect.addEventListener("change", function () {
+        var url = new URL(window.location.href);
+        url.searchParams.set("trimestre", trimestreSelect.value);
+        window.location.href = url.toString();
+      });
+    }
+  })();
+</script>

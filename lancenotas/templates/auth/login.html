@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Login — LanceNotas{% endblock %}
+
+{% block body %}
+  <div
+    class="min-h-screen bg-gradient-to-br from-slate-950 via-blue-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden"
+  >
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div class="absolute -top-40 -right-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+      <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style="animation-delay: 2s;"></div>
+      <div class="absolute top-1/2 left-1/2 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse" style="animation-delay: 4s;"></div>
+    </div>
+
+    <div class="w-full max-w-md relative z-10">
+      <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-2xl blur-xl"></div>
+
+      <div class="relative border border-blue-400/30 bg-slate-900/80 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
+
+        <div class="pt-8 px-6 text-center border-b border-blue-400/10">
+          <img
+            src="{{ url_for('static', filename='Logo_lancenotas.png') }}"
+            alt="LanceNotas"
+            class="mx-auto w-full max-w-[380px] h-auto object-contain mb-3 drop-shadow-[0_12px_28px_rgba(0,0,0,0.55)]"
+          />
+          <p class="text-blue-200/70 text-sm font-medium mb-2">Gestão Acadêmica Inteligente</p>
+        </div>
+
+        <div class="pt-8 pb-6 px-6">
+          <div class="mb-6">
+            <h2 class="text-xl font-semibold text-white mb-1">Bem-vindo!</h2>
+            <p class="text-sm text-blue-200/60">Entre com suas credenciais para continuar</p>
+          </div>
+
+          <form id="login-form" method="post" action="{{ url_for('auth.login_post') }}" class="space-y-4">
+            {% if error %}
+              <div
+                class="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg backdrop-blur-sm"
+                role="alert"
+              >
+                <div class="text-red-400 flex-shrink-0 mt-0.5">!</div>
+                <p class="text-sm text-red-300">{{ error }}</p>
+              </div>
+            {% endif %}
+
+            <div class="space-y-2">
+              <label for="email" class="text-sm font-medium text-blue-100">Email</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="seu@email.com"
+                autocomplete="email"
+                required
+                class="h-11 w-full bg-slate-800/50 border border-blue-400/20 text-white placeholder:text-slate-500 focus:border-blue-400/50 focus:bg-slate-800/80 focus:ring-2 focus:ring-blue-500/20 rounded-lg transition-all px-3 py-2"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label for="senha" class="text-sm font-medium text-blue-100">Senha</label>
+              <div class="relative">
+                <input
+                  id="senha"
+                  name="senha"
+                  type="password"
+                  placeholder="••••••••"
+                  autocomplete="current-password"
+                  required
+                  class="h-11 w-full bg-slate-800/50 border border-blue-400/20 text-white placeholder:text-slate-500 focus:border-blue-400/50 focus:bg-slate-800/80 focus:ring-2 focus:ring-blue-500/20 rounded-lg transition-all px-3 py-2 pr-24"
+                />
+                <button
+                  id="toggle-password"
+                  type="button"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-blue-200 transition-colors text-sm"
+                >
+                  Mostrar
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              class="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all mt-6"
+            >
+              Entrar
+            </button>
+
+            <div class="text-center pt-2">
+              <a
+                href="#"
+                class="text-sm text-blue-300 hover:text-blue-200 font-medium transition-colors"
+                onclick="event.preventDefault(); alert('Funcionalidade em breve');"
+              >
+                Esqueci minha senha
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <p class="text-center text-xs text-blue-300/60 mt-6">AjudaOn</p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var toggle = document.getElementById("toggle-password");
+      var passwordInput = document.getElementById("senha");
+
+      if (toggle && passwordInput) {
+        toggle.addEventListener("click", function () {
+          var isPassword = passwordInput.getAttribute("type") === "password";
+          passwordInput.setAttribute("type", isPassword ? "text" : "password");
+          toggle.textContent = isPassword ? "Ocultar" : "Mostrar";
+        });
+      }
+    })();
+  </script>
+{% endblock %}

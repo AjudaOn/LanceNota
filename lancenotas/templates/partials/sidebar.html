@@ -1,0 +1,108 @@
+{% set path = request.path %}
+
+{# Mobile overlay #}
+<div id="sidebar-overlay" class="fixed inset-0 bg-black/50 lg:hidden z-40 hidden" aria-hidden="true"></div>
+
+<aside
+  id="sidebar"
+  class="fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white transform transition-transform duration-300 ease-in-out z-50 lg:translate-x-0 lg:static lg:h-auto shadow-lg -translate-x-full lg:translate-x-0"
+>
+  <div class="lg:hidden flex items-center justify-between p-4 border-b border-slate-700">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold">LN</div>
+      <span class="font-bold text-lg">LanceNotas</span>
+    </div>
+    <button id="sidebar-close" class="text-white hover:text-gray-300" type="button">✕</button>
+  </div>
+
+  <div class="hidden lg:flex items-center gap-3 p-6 border-b border-slate-700">
+    <div class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold">LN</div>
+    <div>
+      <div class="font-bold text-white">LanceNotas</div>
+      <div class="text-xs text-slate-300">Gestão Acadêmica</div>
+    </div>
+  </div>
+
+  <nav class="flex-1 overflow-y-auto py-4 lg:py-6 px-3 lg:px-4">
+    <div class="space-y-2">
+      <a
+        href="{{ url_for('pages.dashboard') }}"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium text-sm {{ 'bg-blue-600 text-white' if path.startswith('/dashboard') else 'text-white hover:bg-slate-700' }}"
+      >
+        <span class="w-5 text-center">📊</span>
+        <span>Dashboard</span>
+      </a>
+
+      <a
+        href="{{ url_for('pages.turmas') }}"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium text-sm {{ 'bg-blue-600 text-white' if path.startswith('/turmas') else 'text-white hover:bg-slate-700' }}"
+      >
+        <span class="w-5 text-center">📚</span>
+        <span>Turmas</span>
+      </a>
+
+      <a
+        href="{{ url_for('pages.horario') }}"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium text-sm {{ 'bg-blue-600 text-white' if path.startswith('/horario') else 'text-white hover:bg-slate-700' }}"
+      >
+        <span class="w-5 text-center">🗓️</span>
+        <span>Horário</span>
+      </a>
+
+      {% if current_user.is_authenticated and current_user.is_admin %}
+        <a
+          href="{{ url_for('pages.fechamento') }}"
+          class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium text-sm {{ 'bg-blue-600 text-white' if path.startswith('/fechamento') else 'text-white hover:bg-slate-700' }}"
+        >
+          <span class="w-5 text-center">🏆</span>
+          <span>Fechamento</span>
+        </a>
+
+        <a
+          href="{{ url_for('pages.configuracoes') }}"
+          class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium text-sm {{ 'bg-blue-600 text-white' if path.startswith('/configuracoes') else 'text-white hover:bg-slate-700' }}"
+        >
+          <span class="w-5 text-center">⚙️</span>
+          <span>Configurações</span>
+        </a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <div class="border-t border-slate-700 p-4">
+    <form method="post" action="{{ url_for('auth.logout') }}">
+      <button
+        type="submit"
+        class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-slate-700 transition-colors font-medium text-sm"
+      >
+        <span class="w-5 text-center">⎋</span>
+        <span>Sair</span>
+      </button>
+    </form>
+  </div>
+</aside>
+
+<script>
+  (function () {
+    var sidebar = document.getElementById("sidebar");
+    var overlay = document.getElementById("sidebar-overlay");
+    var closeBtn = document.getElementById("sidebar-close");
+    var openBtn = document.getElementById("sidebar-open");
+
+    function openSidebar() {
+      if (!sidebar || !overlay) return;
+      sidebar.classList.remove("-translate-x-full");
+      overlay.classList.remove("hidden");
+    }
+
+    function closeSidebar() {
+      if (!sidebar || !overlay) return;
+      sidebar.classList.add("-translate-x-full");
+      overlay.classList.add("hidden");
+    }
+
+    if (openBtn) openBtn.addEventListener("click", openSidebar);
+    if (closeBtn) closeBtn.addEventListener("click", closeSidebar);
+    if (overlay) overlay.addEventListener("click", closeSidebar);
+  })();
+</script>
