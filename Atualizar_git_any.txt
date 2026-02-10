@@ -1,0 +1,56 @@
+GUIA DE ATUALIZAÇÃO - LANCENOTAS (Flask + SQLite) - GitHub -> PythonAnywhere
+
+Remote do projeto:
+git@github.com:AjudaOn/LanceNota.git
+
+PASSO 0 - (OPCIONAL) SE VOCÊ USA PASTA _release
+Este projeto está versionado direto em `/home/edir/Documentos/LanceNotas`.
+Se quiser manter o mesmo padrão do outro sistema com `_release`, crie/organize uma pasta de release e mantenha **apenas código** nela.
+
+Obs: nunca copie/suba `.venv/`, `instance/` ou PDFs para produção.
+
+PASSO 1 - NO SEU PC (onde está o código)
+cd /home/edir/Documentos/LanceNotas
+git status
+git add <lista_de_arquivos_alterados>   # ou: git add .
+git commit -m "<mensagem_do_commit>"    # ex: "fix: ajuste horario"
+git push origin main
+
+PASSO 1.1 - CONFERÊNCIA (recomendado)
+git status  (tem que ficar limpo)
+git log -1 --oneline  (anote o commit)
+
+PASSO 2 - NO PYTHONANYWHERE (bash console)
+cd <PASTA_DO_PROJETO_NO_PYTHONANYWHERE>
+# Exemplo (ajuste para o seu caso):
+# cd /home/HTMPONTAPORA/LanceNota
+# ou:
+# cd /home/<seu_usuario>/LanceNota
+
+git pull
+
+PASSO 2.1 - CONFERÊNCIA (recomendado)
+git log -1 --oneline  (confira se é o mesmo commit do PASSO 1.1)
+
+PASSO 2.2 - DEPENDÊNCIAS / MIGRATIONS (quando necessário)
+Se o commit alterou `requirements.txt`:
+  <ATIVAR_VENV_DO_PYTHONANYWHERE>
+  pip install -r requirements.txt
+
+Se o commit alterou migrations (pasta `migrations/`):
+  <ATIVAR_VENV_DO_PYTHONANYWHERE>
+  export FLASK_APP="lancenotas:create_app"
+  flask db upgrade
+
+PASSO 3 - RELOAD
+Vá em Web > Reload
+
+PASSO 4 - TESTE RÁPIDO (recomendado)
+1) Login como Admin (Edir) e conferir Dashboard
+2) Turmas: listar em ordem, abrir uma turma e navegar entre abas/telas
+3) Horário: conferir grade de Manhã/Tarde e itens de HA
+4) Atividades/Lançamentos: conferir checkbox de falta justificada e médias
+
+OBSERVAÇÕES
+- Em produção não precisa (e nem deve) subir o arquivo sqlite local.
+- O repositório já ignora: `.venv/`, `instance/`, `*.pdf` e outros arquivos locais.
