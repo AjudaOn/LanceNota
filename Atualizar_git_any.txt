@@ -42,6 +42,16 @@ Se o commit alterou migrations (pasta `migrations/`):
   export FLASK_APP="lancenotas:create_app"
   flask db upgrade
 
+BANCO SQLITE (IMPORTANTE)
+- O banco **não** vai para o Git (fica em `instance/lancenotas.sqlite3` e é ignorado).
+- Primeira vez em produção, você tem 2 opções:
+  A) Começar do zero (recomendado se não tiver dados reais):
+     - Rodar `flask db upgrade` e deixar o sistema criar o SQLite novo.
+  B) Levar os dados que você já cadastrou (turmas/alunos/atividades):
+     - Subir manualmente o arquivo local `instance/lancenotas.sqlite3` para o servidor,
+       no caminho do projeto: `<PASTA_DO_PROJETO_NO_PYTHONANYWHERE>/instance/lancenotas.sqlite3`
+     - (Dica) faça backup antes de substituir o arquivo no servidor.
+
 PASSO 3 - RELOAD
 Vá em Web > Reload
 
