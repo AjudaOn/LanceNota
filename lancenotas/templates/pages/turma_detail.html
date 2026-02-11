@@ -411,7 +411,11 @@
               <div>
                 <h2 class="text-lg font-semibold text-gray-900">Lançar nota do dia</h2>
                 <p class="text-sm text-gray-600 mt-1">
-                  {{ selected_atividade.titulo }} — Aula {{ selected_aula_num }} / {{ selected_atividade.aulas_planejadas }}
+                  {{ selected_atividade.titulo }}
+                  {% if selected_atividade.descricao %}
+                    - {{ selected_atividade.descricao }}
+                  {% endif %}
+                  - Aula {{ selected_aula_num }} / {{ selected_atividade.aulas_planejadas }}
                 </p>
               </div>
               <div class="flex flex-wrap gap-2">
