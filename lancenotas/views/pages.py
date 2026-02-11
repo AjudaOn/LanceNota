@@ -5,7 +5,7 @@ import unicodedata
 from datetime import date
 from datetime import datetime
 
-from flask import Blueprint, redirect, render_template, request, url_for
+from flask import Blueprint, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import func
 from sqlalchemy import or_
@@ -34,6 +34,26 @@ def _safe_int(value: str | None, default: int) -> int:
         return int(value) if value is not None else default
     except ValueError:
         return default
+
+
+def _selected_ano_letivo(*, professor_id: int) -> int:
+    raw = session.get("ano_letivo")
+    if raw is not None:
+        try:
+            year = int(raw)
+            if 2000 <= year <= 2100:
+                return year
+        except (TypeError, ValueError):
+            pass
+
+    max_year = (
+        db.session.query(func.max(Turma.ano_letivo))
+        .filter(Turma.professor_id == professor_id)
+        .scalar()
+    )
+    year = int(max_year) if max_year is not None else int(date.today().year)
+    session["ano_letivo"] = year
+    return year
 
 
 def _aulas_iniciadas_ids(*, aulas_ids: list[int], today: date) -> set[int]:
@@ -175,7 +195,8 @@ def dashboard():
     professor_id = int(current_user.id)
     today = date.today()
 
-    turmas = Turma.query.filter_by(professor_id=professor_id).all()
+    ano_letivo = _selected_ano_letivo(professor_id=professor_id)
+    turmas = Turma.query.filter_by(professor_id=professor_id, ano_letivo=ano_letivo).all()
     turma_ids = [t.id for t in turmas]
 
     turmas_ativas = len(turmas)
@@ -330,6 +351,7 @@ def dashboard():
 
     return render_template(
         "pages/dashboard.html",
+        selected_ano_letivo=ano_letivo,
         turmas_ativas=turmas_ativas,
         total_alunos=total_alunos,
         avaliacoes_pendentes=avaliacoes_pendentes,
@@ -342,6 +364,7 @@ def dashboard():
 @login_required
 def turmas():
     if request.method == "POST":
+        selected_year = _selected_ano_letivo(professor_id=int(current_user.id))
         turma_id_raw = (request.form.get("turma_id") or "").strip()
         serie = (request.form.get("serie") or "").strip()
         turma_letra = (request.form.get("turma_letra") or "").strip().upper()
@@ -357,6 +380,7 @@ def turmas():
                     "pages/turmas.html",
                     error="Preencha Série, Turma e Disciplina.",
                     q=(request.args.get("q") or "").strip().lower(),
+                    selected_ano_letivo=selected_year,
                 ),
                 400,
             )
@@ -366,14 +390,14 @@ def turmas():
         allowed_periodos = {"Manhã", "Tarde", "Noite"}
 
         if serie not in allowed_series:
-            return render_template("pages/turmas.html", error="Série inválida."), 400
+            return render_template("pages/turmas.html", error="Série inválida.", selected_ano_letivo=selected_year), 400
         if turma_letra not in allowed_turmas:
-            return render_template("pages/turmas.html", error="Turma inválida."), 400
+            return render_template("pages/turmas.html", error="Turma inválida.", selected_ano_letivo=selected_year), 400
 
         try:
             ano_letivo = int(ano_letivo_raw) if ano_letivo_raw else 2026
         except ValueError:
-            return render_template("pages/turmas.html", error="Ano letivo inválido."), 400
+            return render_template("pages/turmas.html", error="Ano letivo inválido.", selected_ano_letivo=selected_year), 400
 
         disciplina = "Arte" if disciplina_raw.strip().lower() == "artes" else disciplina_raw
 
@@ -431,7 +455,7 @@ def turmas():
 
             turma = Turma.query.filter_by(id=turma_id_int, professor_id=int(current_user.id)).first()
             if turma is None:
-                return render_template("pages/turmas.html", error="Turma não encontrada."), 404
+                return render_template("pages/turmas.html", error="Turma não encontrada.", selected_ano_letivo=selected_year), 404
 
             turma.nome = nome
             turma.serie = serie
@@ -468,7 +492,9 @@ def turmas():
 
     q = (request.args.get("q") or "").strip().lower()
 
-    turmas_db = Turma.query.filter_by(professor_id=int(current_user.id)).all()
+    professor_id = int(current_user.id)
+    ano_letivo = _selected_ano_letivo(professor_id=professor_id)
+    turmas_db = Turma.query.filter_by(professor_id=professor_id, ano_letivo=ano_letivo).all()
 
     serie_rank_map = {"5º": 5, "6º": 6, "7º": 7, "8º": 8, "9º": 9, "1º Ano": 10, "2º Ano": 11}
 
@@ -526,7 +552,12 @@ def turmas():
             }
         )
 
-    return render_template("pages/turmas.html", turmas=turma_cards, q=q)
+    return render_template(
+        "pages/turmas.html",
+        turmas=turma_cards,
+        q=q,
+        selected_ano_letivo=ano_letivo,
+    )
 
 
 @pages_bp.get("/turmas/<int:turma_id>")
@@ -1733,13 +1764,48 @@ def turma_transferir_aluno(turma_id: int):
 @pages_bp.get("/configuracoes")
 @login_required
 def configuracoes():
-    return render_template("pages/configuracoes.html")
+    professor_id = int(current_user.id)
+    selected = _selected_ano_letivo(professor_id=professor_id)
+
+    years = {
+        int(y)
+        for (y,) in db.session.query(Turma.ano_letivo)
+        .filter(Turma.professor_id == professor_id)
+        .distinct()
+        .all()
+        if y is not None
+    }
+    years.update({selected, selected + 1})
+    available_years = sorted(years)
+
+    return render_template(
+        "pages/configuracoes.html",
+        selected_ano_letivo=selected,
+        available_anos_letivos=available_years,
+    )
+
+
+@pages_bp.post("/configuracoes/ano-letivo")
+@login_required
+def configuracoes_set_ano_letivo():
+    professor_id = int(current_user.id)
+    year = _safe_int((request.form.get("ano_letivo") or "").strip(), 0)
+    if year < 2000 or year > 2100:
+        year = _selected_ano_letivo(professor_id=professor_id)
+
+    session["ano_letivo"] = int(year)
+
+    next_url = (request.form.get("next") or "").strip()
+    if next_url.startswith("/"):
+        return redirect(next_url)
+    return redirect(url_for("pages.turmas"))
 
 
 @pages_bp.get("/horario")
 @login_required
 def horario():
     professor_id = int(current_user.id)
+    ano_letivo = _selected_ano_letivo(professor_id=professor_id)
 
     dias_cols = [(0, "SEG"), (1, "TER"), (2, "QUAR"), (3, "QUI"), (4, "SEX")]
     periods = ["Manhã", "Tarde", "Noite"]
@@ -1748,6 +1814,7 @@ def horario():
         db.session.query(TurmaHorario.dia_semana, TurmaHorario.hora, TurmaHorario.periodo, Turma.nome, Turma.id)
         .join(Turma, TurmaHorario.turma_id == Turma.id)
         .filter(Turma.professor_id == professor_id)
+        .filter(Turma.ano_letivo == ano_letivo)
         .filter(TurmaHorario.dia_semana.in_([d for d, _ in dias_cols]))
         .order_by(TurmaHorario.periodo.asc(), TurmaHorario.hora.asc(), TurmaHorario.dia_semana.asc(), Turma.nome.asc())
         .all()
@@ -1808,6 +1875,7 @@ def horario():
 
     return render_template(
         "pages/horario.html",
+        selected_ano_letivo=ano_letivo,
         dias_cols=dias_cols,
         periods=periods,
         grade=grade,

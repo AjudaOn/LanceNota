@@ -49,15 +49,13 @@
         <span>Horário</span>
       </a>
 
-      {% if current_user.is_authenticated and current_user.is_admin %}
-        <a
-          href="{{ url_for('pages.configuracoes') }}"
-          class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium text-sm {{ 'bg-blue-600 text-white' if path.startswith('/configuracoes') else 'text-white hover:bg-slate-700' }}"
-        >
-          <span class="w-5 text-center">⚙️</span>
-          <span>Configurações</span>
-        </a>
-      {% endif %}
+      <a
+        href="{{ url_for('pages.configuracoes') }}"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium text-sm {{ 'bg-blue-600 text-white' if path.startswith('/configuracoes') else 'text-white hover:bg-slate-700' }}"
+      >
+        <span class="w-5 text-center">⚙️</span>
+        <span>Configurações</span>
+      </a>
     </div>
   </nav>
 
