@@ -3,11 +3,16 @@ GUIA DE ATUALIZAÇÃO - LANCENOTAS (Flask + SQLite) - GitHub -> PythonAnywhere
 Remote do projeto:
 git@github.com:AjudaOn/LanceNota.git
 
-PASSO 0 - (OPCIONAL) SE VOCÊ USA PASTA _release
-Este projeto está versionado direto em `/home/edir/Documentos/LanceNotas`.
-Se quiser manter o mesmo padrão do outro sistema com `_release`, crie/organize uma pasta de release e mantenha **apenas código** nela.
+PASSO 0 - SEMPRE ANTES DE SUBIR (padrão “_release”)
+Se você quer manter o mesmo padrão do outro projeto (copiar para `_release` antes do commit),
+use o script abaixo para recriar a pasta `_release/` com **apenas o código de produção**:
 
-Obs: nunca copie/suba `.venv/`, `instance/` ou PDFs para produção.
+cd /home/edir/Documentos/LanceNotas
+./scripts/update_release.sh
+
+Obs:
+- O `_release/` é gerado a partir do código do projeto (não copie/suba `.venv/`, `instance/` ou PDFs).
+- Se em produção o “Source code” do PythonAnywhere apontar para `_release/`, você precisará rodar esse script também no servidor após o `git pull`.
 
 PASSO 1 - NO SEU PC (onde está o código)
 cd /home/edir/Documentos/LanceNotas
@@ -28,6 +33,10 @@ cd <PASTA_DO_PROJETO_NO_PYTHONANYWHERE>
 # cd /home/<seu_usuario>/LanceNota
 
 git pull
+
+SE SUA PRODUÇÃO USA `_release/` (opcional)
+Se o PythonAnywhere estiver apontando para `_release/` como “Source code”, rode:
+  ./scripts/update_release.sh
 
 PASSO 2.1 - CONFERÊNCIA (recomendado)
 git log -1 --oneline  (confira se é o mesmo commit do PASSO 1.1)
