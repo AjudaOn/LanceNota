@@ -30,3 +30,4 @@ flask db upgrade
 ## Observações
 
 - Arquivos locais como `.venv/` e `instance/` (incluindo o SQLite) ficam fora do versionamento.
+- O sistema considera **3 trimestres** (ajuste em `lancenotas/constants.py`).

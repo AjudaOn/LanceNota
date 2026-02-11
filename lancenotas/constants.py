@@ -1,0 +1,2 @@
+MAX_TRIMESTRE = 3
+

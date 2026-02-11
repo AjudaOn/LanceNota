@@ -7,6 +7,61 @@ from flask_login import UserMixin
 from .extensions import db
 
 
+class Estudante(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome_completo = db.Column(db.String(255), nullable=False)
+    matricula = db.Column(db.String(64), nullable=True, unique=True, index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+class FechamentoTrimestreAluno(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    turma_id = db.Column(db.Integer, db.ForeignKey("turma.id"), nullable=False, index=True)
+    estudante_id = db.Column(db.Integer, db.ForeignKey("estudante.id"), nullable=False, index=True)
+    origem_turma_id = db.Column(db.Integer, db.ForeignKey("turma.id"), nullable=True, index=True)
+    ano_letivo = db.Column(db.Integer, nullable=False)
+    trimestre = db.Column(db.Integer, nullable=False)
+
+    media_final = db.Column(db.Float, nullable=True)
+    total_pontos = db.Column(db.Float, nullable=True)
+    avaliadas = db.Column(db.Integer, nullable=False, default=0)
+    total_previstas = db.Column(db.Integer, nullable=False, default=0)
+    locked = db.Column(db.Boolean, nullable=False, default=False)
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "turma_id",
+            "estudante_id",
+            "ano_letivo",
+            "trimestre",
+            name="uq_fechamento_turma_estudante_ano_tri",
+        ),
+    )
+
+class FechamentoTrimestreTurma(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    turma_id = db.Column(db.Integer, db.ForeignKey("turma.id"), nullable=False, index=True)
+    ano_letivo = db.Column(db.Integer, nullable=False)
+    trimestre = db.Column(db.Integer, nullable=False)
+
+    status = db.Column(db.String(16), nullable=False, default="aberto")  # aberto|fechado
+    fechado_em = db.Column(db.DateTime, nullable=True)
+    fechado_por_professor_id = db.Column(db.Integer, db.ForeignKey("professor.id"), nullable=True, index=True)
+    reaberto_em = db.Column(db.DateTime, nullable=True)
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "turma_id",
+            "ano_letivo",
+            "trimestre",
+            name="uq_fechamento_turma_ano_tri",
+        ),
+    )
+
+
 class Professor(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(120), nullable=False)
@@ -74,6 +129,7 @@ class HorarioEvento(db.Model):
 class Aluno(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     turma_id = db.Column(db.Integer, db.ForeignKey("turma.id"), nullable=False, index=True)
+    estudante_id = db.Column(db.Integer, db.ForeignKey("estudante.id"), nullable=True, index=True)
     nome_completo = db.Column(db.String(255), nullable=False)
     numero_chamada = db.Column(db.Integer, nullable=True)
     matricula = db.Column(db.String(64), nullable=True)

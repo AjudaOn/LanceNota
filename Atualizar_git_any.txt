@@ -41,6 +41,7 @@ Se o commit alterou migrations (pasta `migrations/`):
   <ATIVAR_VENV_DO_PYTHONANYWHERE>
   export FLASK_APP="lancenotas:create_app"
   flask db upgrade
+  # Obs: há migração que normaliza dados para **3 trimestres** (trimestre>3 é ajustado para 3).
 
 BANCO SQLITE (IMPORTANTE)
 - O banco **não** vai para o Git (fica em `instance/lancenotas.sqlite3` e é ignorado).
