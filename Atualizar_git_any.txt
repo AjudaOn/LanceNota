@@ -3,6 +3,15 @@ GUIA DE ATUALIZAÇÃO - LANCENOTAS (Flask + SQLite) - GitHub -> PythonAnywhere
 Remote do projeto:
 git@github.com:AjudaOn/LanceNota.git
 
+COMO ESTÁ A PRODUÇÃO HOJE (referência)
+- O repositório Git está na pasta: `~/LanceNotas` (raiz do projeto)
+- O deploy usa a pasta `_release/` gerada a partir do projeto (PASSO 0)
+- Atualização típica em produção:
+  cd ~/LanceNotas
+  git pull
+  ./scripts/update_release.sh
+  Web > Reload
+
 PASSO 0 - SEMPRE ANTES DE SUBIR (padrão “_release”)
 Se você quer manter o mesmo padrão do outro projeto (copiar para `_release` antes do commit),
 use o script abaixo para recriar a pasta `_release/` com **apenas o código de produção**:
