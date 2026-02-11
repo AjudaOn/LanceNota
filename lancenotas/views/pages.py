@@ -1147,6 +1147,12 @@ def turma_salvar_lancamentos(turma_id: int, atividade_id: int, aula_num: int):
                     )
 
         lanc = LancamentoAulaAluno.query.filter_by(aula_id=aula.id, aluno_id=aluno.id).first()
+        has_any_value = bool(atestado) or (nota is not None) or (obs_str != "")
+        if not has_any_value:
+            if lanc is not None:
+                db.session.delete(lanc)
+            continue
+
         if lanc is None:
             lanc = LancamentoAulaAluno(aula_id=aula.id, aluno_id=aluno.id)
             db.session.add(lanc)
