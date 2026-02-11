@@ -537,18 +537,30 @@ def turma_detail(turma_id: int):
         return redirect(url_for("pages.turmas"))
 
     today = date.today()
+    ano_letivo = int(turma.ano_letivo or 2026)
 
     tab = (request.args.get("tab") or "detalhes").strip().lower()
     if tab not in {"detalhes", "atividades"}:
         tab = "detalhes"
 
-    trimestre = request.args.get("trimestre", "1")
-    try:
-        current_trimestre = max(1, min(MAX_TRIMESTRE, int(trimestre)))
-    except ValueError:
-        current_trimestre = 1
+    trimestre_param = (request.args.get("trimestre") or "").strip()
+    if trimestre_param:
+        try:
+            current_trimestre = max(1, min(MAX_TRIMESTRE, int(trimestre_param)))
+        except ValueError:
+            current_trimestre = 1
+    else:
+        fechados = {
+            int(r.trimestre)
+            for r in FechamentoTrimestreTurma.query.filter_by(
+                turma_id=turma.id, ano_letivo=ano_letivo, status="fechado"
+            ).all()
+        }
+        current_trimestre = next(
+            (tri for tri in range(1, MAX_TRIMESTRE + 1) if tri not in fechados),
+            MAX_TRIMESTRE,
+        )
 
-    ano_letivo = int(turma.ano_letivo or 2026)
     fechamento_rec = FechamentoTrimestreTurma.query.filter_by(
         turma_id=turma.id,
         ano_letivo=ano_letivo,
