@@ -440,9 +440,9 @@
                     <th class="text-left font-semibold px-4 py-3 w-20">Nº</th>
                     <th class="text-left font-semibold px-4 py-3">Aluno</th>
                     <th class="text-left font-semibold px-4 py-3 w-36">Falta justificada</th>
-                    <th class="text-left font-semibold px-4 py-3 w-28">Nota (0–10)</th>
+                    <th class="text-center font-semibold px-4 py-3 w-28">Nota (0–10)</th>
                     <th class="text-left font-semibold px-4 py-3">Observação</th>
-                    <th class="text-left font-semibold px-4 py-3 w-24">Média</th>
+                    <th class="text-center font-semibold px-4 py-3 w-24">Média</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -466,13 +466,13 @@
                           />
                         </label>
                       </td>
-                      <td class="px-4 py-3">
+                      <td class="px-4 py-3 text-center">
                         <input
                           name="nota_{{ a.id }}"
                           inputmode="decimal"
                           placeholder="0"
                           value="{% if lanc and lanc.nota is not none %}{{ ('%.2f' % lanc.nota).rstrip('0').rstrip('.') }}{% else %}{% endif %}"
-                          class="w-24 border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          class="w-24 text-center border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                           data-nota-input="{{ a.id }}"
                         />
                       </td>
@@ -485,7 +485,7 @@
                         />
                       </td>
                       {% set media_val = medias_by_aluno.get(a.id) %}
-                      <td class="px-4 py-3 font-semibold {{ 'text-gray-900' if media_val is not none else 'text-gray-400' }}">
+                      <td class="px-4 py-3 text-center font-semibold {{ 'text-gray-900' if media_val is not none else 'text-gray-400' }}">
                         {{ media_val if media_val is not none else '-' }}
                       </td>
                     </tr>
