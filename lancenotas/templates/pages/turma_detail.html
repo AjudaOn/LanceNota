@@ -245,10 +245,10 @@
             <tr>
               <th class="text-left font-semibold px-4 py-3 w-20">Nº</th>
               <th class="text-left font-semibold px-4 py-3">Aluno</th>
-              <th class="text-left font-semibold px-4 py-3 w-28">1º Trim</th>
-              <th class="text-left font-semibold px-4 py-3 w-28">2º Trim</th>
-              <th class="text-left font-semibold px-4 py-3 w-28">3º Trim</th>
-              <th class="text-left font-semibold px-4 py-3 w-28">Total</th>
+              <th class="text-center font-semibold px-4 py-3 w-28">1º Trim</th>
+              <th class="text-center font-semibold px-4 py-3 w-28">2º Trim</th>
+              <th class="text-center font-semibold px-4 py-3 w-28">3º Trim</th>
+              <th class="text-center font-semibold px-4 py-3 w-28">Total</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -263,7 +263,7 @@
                 </td>
                 {% for key in ["t1", "t2", "t3", "total"] %}
                   {% set val = row.get(key) %}
-                  <td class="px-4 py-3 font-semibold {{ 'text-gray-900' if val is not none else 'text-gray-400' }}">
+                  <td class="px-4 py-3 text-center font-semibold {{ 'text-gray-900' if val is not none else 'text-gray-400' }}">
                     {{ val if val is not none else "-" }}
                   </td>
                 {% endfor %}
