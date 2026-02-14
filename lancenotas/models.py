@@ -187,3 +187,14 @@ class LancamentoAulaAluno(db.Model):
     __table_args__ = (
         db.UniqueConstraint("aula_id", "aluno_id", name="uq_lancamento_aula_aluno"),
     )
+
+
+class DiarioAnotacao(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    turma_id = db.Column(db.Integer, db.ForeignKey("turma.id"), nullable=False, index=True)
+    professor_id = db.Column(db.Integer, db.ForeignKey("professor.id"), nullable=False, index=True)
+    data = db.Column(db.Date, nullable=False, default=datetime.utcnow)
+    titulo = db.Column(db.String(100), nullable=True)  # Ex: "1ª aula - Artes", "2ª aula - Projeto"
+    anotacao = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)

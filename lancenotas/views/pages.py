@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 import re
 import unicodedata
 from datetime import date
@@ -16,6 +17,7 @@ from ..models import (
     Aluno,
     Atividade,
     AtividadeAula,
+    DiarioAnotacao,
     Estudante,
     FechamentoTrimestreAluno,
     FechamentoTrimestreTurma,
@@ -1943,3 +1945,218 @@ def horario_evento_delete(evento_id: int):
     db.session.delete(evento)
     db.session.commit()
     return redirect(url_for("pages.horario"))
+
+
+@pages_bp.get("/turmas/<int:turma_id>/diario")
+@login_required
+def turma_diario(turma_id: int):
+    turma = Turma.query.filter_by(id=turma_id, professor_id=int(current_user.id)).first()
+    if turma is None:
+        return redirect(url_for("pages.turmas"))
+
+    hoje = date.today()
+
+    dia_param = (request.args.get("dia") or "").strip()
+    mes_param = (request.args.get("mes") or "").strip()
+
+    dia_selecionado: date
+    if dia_param:
+        try:
+            dia_selecionado = date.fromisoformat(dia_param)
+        except ValueError:
+            dia_selecionado = hoje
+    else:
+        dia_selecionado = hoje
+
+    mes_ano: int
+    mes_numero: int
+    if mes_param:
+        try:
+            parts = mes_param.split("-")
+            mes_ano = int(parts[0])
+            mes_numero = int(parts[1])
+            if not (1 <= mes_numero <= 12):
+                raise ValueError
+        except (ValueError, IndexError):
+            mes_ano = dia_selecionado.year
+            mes_numero = dia_selecionado.month
+    else:
+        mes_ano = dia_selecionado.year
+        mes_numero = dia_selecionado.month
+
+    primeiro_dia_mes = date(mes_ano, mes_numero, 1)
+    ultimo_dia_num = calendar.monthrange(mes_ano, mes_numero)[1]
+    ultimo_dia_mes = date(mes_ano, mes_numero, ultimo_dia_num)
+
+    if dia_selecionado < primeiro_dia_mes or dia_selecionado > ultimo_dia_mes:
+        dia_selecionado = primeiro_dia_mes
+
+    anotacao_hoje = (
+        DiarioAnotacao.query.filter_by(
+            turma_id=turma.id,
+            professor_id=int(current_user.id),
+            data=hoje,
+        )
+        .order_by(DiarioAnotacao.updated_at.desc(), DiarioAnotacao.created_at.desc())
+        .first()
+    )
+
+    anotacoes_dia_selecionado = (
+        DiarioAnotacao.query.filter_by(
+            turma_id=turma.id,
+            professor_id=int(current_user.id),
+            data=dia_selecionado,
+        )
+        .order_by(DiarioAnotacao.created_at.asc())
+        .all()
+    )
+
+    # Marcações do calendário (dias com anotação) no mês corrente
+    contagens_mes_rows = (
+        db.session.query(DiarioAnotacao.data, func.count(DiarioAnotacao.id))
+        .filter(
+            DiarioAnotacao.turma_id == turma.id,
+            DiarioAnotacao.professor_id == int(current_user.id),
+            DiarioAnotacao.data >= primeiro_dia_mes,
+            DiarioAnotacao.data <= ultimo_dia_mes,
+        )
+        .group_by(DiarioAnotacao.data)
+        .all()
+    )
+    contagens_mes = {data_: int(qtd) for (data_, qtd) in contagens_mes_rows}
+
+    prev_mes_ano = mes_ano
+    prev_mes_num = mes_numero - 1
+    if prev_mes_num < 1:
+        prev_mes_num = 12
+        prev_mes_ano -= 1
+    next_mes_ano = mes_ano
+    next_mes_num = mes_numero + 1
+    if next_mes_num > 12:
+        next_mes_num = 1
+        next_mes_ano += 1
+
+    prev_mes_str = f"{prev_mes_ano:04d}-{prev_mes_num:02d}"
+    next_mes_str = f"{next_mes_ano:04d}-{next_mes_num:02d}"
+
+    prev_mes_last_day = calendar.monthrange(prev_mes_ano, prev_mes_num)[1]
+    prev_dia = date(prev_mes_ano, prev_mes_num, min(dia_selecionado.day, prev_mes_last_day))
+    next_mes_last_day = calendar.monthrange(next_mes_ano, next_mes_num)[1]
+    next_dia = date(next_mes_ano, next_mes_num, min(dia_selecionado.day, next_mes_last_day))
+
+    cal = calendar.Calendar(firstweekday=0)  # segunda-feira
+    cal_weeks = cal.monthdatescalendar(mes_ano, mes_numero)
+    weekday_labels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
+    mes_nomes = [
+        "janeiro",
+        "fevereiro",
+        "março",
+        "abril",
+        "maio",
+        "junho",
+        "julho",
+        "agosto",
+        "setembro",
+        "outubro",
+        "novembro",
+        "dezembro",
+    ]
+    mes_label = f"{mes_nomes[mes_numero - 1].capitalize()} {mes_ano}"
+
+    return render_template(
+        "pages/diario.html",
+        turma=turma,
+        hoje=hoje,
+        anotacao_hoje=anotacao_hoje,
+        mes_atual_str=f"{mes_ano:04d}-{mes_numero:02d}",
+        mes_ano=mes_ano,
+        mes_numero=mes_numero,
+        mes_label=mes_label,
+        dia_selecionado=dia_selecionado,
+        anotacoes_dia_selecionado=anotacoes_dia_selecionado,
+        contagens_mes=contagens_mes,
+        cal_weeks=cal_weeks,
+        weekday_labels=weekday_labels,
+        prev_mes_str=prev_mes_str,
+        next_mes_str=next_mes_str,
+        prev_dia_str=prev_dia.isoformat(),
+        next_dia_str=next_dia.isoformat(),
+    )
+
+
+@pages_bp.post("/turmas/<int:turma_id>/diario/salvar")
+@login_required
+def turma_diario_salvar(turma_id: int):
+    turma = Turma.query.filter_by(id=turma_id, professor_id=int(current_user.id)).first()
+    if turma is None:
+        return redirect(url_for("pages.turmas"))
+
+    anotacao_texto = (request.form.get("anotacao") or "").strip()
+    titulo = (request.form.get("titulo") or "").strip() or None
+    data_str = (request.form.get("data") or "").strip()
+    anotacao_id = (request.form.get("anotacao_id") or "").strip()
+    
+    try:
+        data_anotacao = date.fromisoformat(data_str) if data_str else date.today()
+    except ValueError:
+        data_anotacao = date.today()
+
+    anotacao: DiarioAnotacao | None = None
+    if anotacao_id:
+        anotacao = (
+            DiarioAnotacao.query.filter_by(
+                id=int(anotacao_id),
+                turma_id=turma.id,
+                professor_id=int(current_user.id),
+            )
+            .first()
+        )
+    else:
+        anotacao = (
+            DiarioAnotacao.query.filter_by(
+                turma_id=turma.id,
+                professor_id=int(current_user.id),
+                data=data_anotacao,
+            )
+            .order_by(DiarioAnotacao.updated_at.desc(), DiarioAnotacao.created_at.desc())
+            .first()
+        )
+
+    if anotacao is not None:
+        anotacao.titulo = titulo
+        anotacao.anotacao = anotacao_texto
+        anotacao.updated_at = datetime.utcnow()
+    else:
+        db.session.add(
+            DiarioAnotacao(
+                turma_id=turma.id,
+                professor_id=int(current_user.id),
+                data=data_anotacao,
+                titulo=titulo,
+                anotacao=anotacao_texto,
+            )
+        )
+
+    db.session.commit()
+
+    return redirect(url_for("pages.turma_diario", turma_id=turma.id))
+
+
+@pages_bp.post("/turmas/<int:turma_id>/diario/excluir/<int:anotacao_id>")
+@login_required
+def turma_diario_excluir(turma_id: int, anotacao_id: int):
+    turma = Turma.query.filter_by(id=turma_id, professor_id=int(current_user.id)).first()
+    if turma is None:
+        return redirect(url_for("pages.turmas"))
+
+    anotacao = DiarioAnotacao.query.filter_by(
+        id=anotacao_id,
+        turma_id=turma.id,
+        professor_id=int(current_user.id)
+    ).first()
+
+    if anotacao:
+        db.session.delete(anotacao)
+        db.session.commit()
+
+    return redirect(url_for("pages.turma_diario", turma_id=turma.id))
