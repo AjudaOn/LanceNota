@@ -1,85 +1,97 @@
-GUIA DE ATUALIZAÇÃO - LANCENOTAS (Flask + SQLite) - GitHub -> PythonAnywhere
+GUIA DE ATUALIZACAO - LANCENOTAS (Flask + SQLite) - GitHub -> PythonAnywhere
 
 Remote do projeto:
 git@github.com:AjudaOn/LanceNota.git
 
-COMO ESTÁ A PRODUÇÃO HOJE (referência)
-- O repositório Git está na pasta: `~/LanceNotas` (raiz do projeto)
+COMO ESTA A PRODUCAO HOJE (referencia)
+- O repositorio Git esta na pasta: `~/LanceNotas` (raiz do projeto)
 - O deploy usa a pasta `_release/` gerada a partir do projeto (PASSO 0)
-- Atualização típica em produção:
+- Atualizacao tipica em producao:
   cd ~/LanceNotas
   git pull
   ./scripts/update_release.sh
   Web > Reload
 
-PASSO 0 - SEMPRE ANTES DE SUBIR (padrão “_release”)
-Se você quer manter o mesmo padrão do outro projeto (copiar para `_release` antes do commit),
-use o script abaixo para recriar a pasta `_release/` com **apenas o código de produção**:
+PASSO 0 - SEMPRE ANTES DE SUBIR (padrao `_release`)
+Se voce quer manter o padrao de copiar para `_release` antes do commit,
+use o script abaixo para recriar a pasta `_release/` com apenas o codigo de producao.
 
+NO WINDOWS (PowerShell):
+cd C:\Projetos2026\LanceNotas
+bash ./scripts/update_release.sh
+# (requer Git Bash/WSL instalado)
+
+NO LINUX:
 cd /home/edir/Documentos/LanceNotas
 ./scripts/update_release.sh
 
 Obs:
-- O `_release/` é gerado a partir do código do projeto (não copie/suba `.venv/`, `instance/` ou PDFs).
-- Se em produção o “Source code” do PythonAnywhere apontar para `_release/`, você precisará rodar esse script também no servidor após o `git pull`.
+- O `_release/` e gerado a partir do codigo do projeto (nao copie/suba `.venv/`, `instance/` ou PDFs).
+- Se em producao o "Source code" do PythonAnywhere apontar para `_release/`, voce precisara rodar esse script tambem no servidor apos o `git pull`.
 
-PASSO 1 - NO SEU PC (onde está o código)
-cd /home/edir/Documentos/LanceNotas
+PASSO 1 - NO SEU PC (onde esta o codigo)
+NO WINDOWS (PowerShell):
+cd C:\Projetos2026\LanceNotas
 git status
 git add <lista_de_arquivos_alterados>   # ou: git add .
 git commit -m "<mensagem_do_commit>"    # ex: "fix: ajuste horario"
 git push origin main
 
-PASSO 1.1 - CONFERÊNCIA (recomendado)
-git status  (tem que ficar limpo)
-git log -1 --oneline  (anote o commit)
+NO LINUX:
+cd /home/edir/Documentos/LanceNotas
+git status
+git add <lista_de_arquivos_alterados>   # ou: git add .
+git commit -m "<mensagem_do_commit>"
+git push origin main
+
+PASSO 1.1 - CONFERENCIA (recomendado)
+git status                 # tem que ficar limpo
+git log -1 --oneline       # anote o commit
 
 PASSO 2 - NO PYTHONANYWHERE (bash console)
 cd <PASTA_DO_PROJETO_NO_PYTHONANYWHERE>
 # Exemplo (ajuste para o seu caso):
-# cd /home/HTMPONTAPORA/LanceNota
-# ou:
-# cd /home/<seu_usuario>/LanceNota
+# cd /home/<seu_usuario>/LanceNotas
 
 git pull
 
-SE SUA PRODUÇÃO USA `_release/` (opcional)
-Se o PythonAnywhere estiver apontando para `_release/` como “Source code”, rode:
-  ./scripts/update_release.sh
+SE SUA PRODUCAO USA `_release/` (opcional)
+Se o PythonAnywhere estiver apontando para `_release/` como "Source code", rode:
+./scripts/update_release.sh
 
-PASSO 2.1 - CONFERÊNCIA (recomendado)
-git log -1 --oneline  (confira se é o mesmo commit do PASSO 1.1)
+PASSO 2.1 - CONFERENCIA (recomendado)
+git log -1 --oneline  # confira se e o mesmo commit do PASSO 1.1
 
-PASSO 2.2 - DEPENDÊNCIAS / MIGRATIONS (quando necessário)
+PASSO 2.2 - DEPENDENCIAS / MIGRATIONS (quando necessario)
 Se o commit alterou `requirements.txt`:
-  <ATIVAR_VENV_DO_PYTHONANYWHERE>
-  pip install -r requirements.txt
+<ATIVAR_VENV_DO_PYTHONANYWHERE>
+pip install -r requirements.txt
 
 Se o commit alterou migrations (pasta `migrations/`):
-  <ATIVAR_VENV_DO_PYTHONANYWHERE>
-  export FLASK_APP="lancenotas:create_app"
-  flask db upgrade
-  # Obs: há migração que normaliza dados para **3 trimestres** (trimestre>3 é ajustado para 3).
+<ATIVAR_VENV_DO_PYTHONANYWHERE>
+export FLASK_APP="lancenotas:create_app"
+flask db upgrade
 
 BANCO SQLITE (IMPORTANTE)
-- O banco **não** vai para o Git (fica em `instance/lancenotas.sqlite3` e é ignorado).
-- Primeira vez em produção, você tem 2 opções:
-  A) Começar do zero (recomendado se não tiver dados reais):
+- O banco nao vai para o Git (fica em `instance/lancenotas.sqlite3` e e ignorado).
+- Primeira vez em producao, voce tem 2 opcoes:
+  A) Comecar do zero:
      - Rodar `flask db upgrade` e deixar o sistema criar o SQLite novo.
-  B) Levar os dados que você já cadastrou (turmas/alunos/atividades):
-     - Subir manualmente o arquivo local `instance/lancenotas.sqlite3` para o servidor,
-       no caminho do projeto: `<PASTA_DO_PROJETO_NO_PYTHONANYWHERE>/instance/lancenotas.sqlite3`
-     - (Dica) faça backup antes de substituir o arquivo no servidor.
+  B) Levar os dados ja cadastrados:
+     - Subir manualmente `instance/lancenotas.sqlite3` para o servidor no caminho:
+       `<PASTA_DO_PROJETO_NO_PYTHONANYWHERE>/instance/lancenotas.sqlite3`
+     - Faca backup antes de substituir o arquivo no servidor.
 
 PASSO 3 - RELOAD
 Vá em Web > Reload
 
-PASSO 4 - TESTE RÁPIDO (recomendado)
+PASSO 4 - TESTE RAPIDO (recomendado)
 1) Login como Admin (Edir) e conferir Dashboard
 2) Turmas: listar em ordem, abrir uma turma e navegar entre abas/telas
-3) Horário: conferir grade de Manhã/Tarde e itens de HA
-4) Atividades/Lançamentos: conferir checkbox de falta justificada e médias
+3) Horario: conferir grade de Manha/Tarde e itens de HA
+4) Atividades/Lancamentos: conferir checkbox de falta justificada e medias
 
-OBSERVAÇÕES
-- Em produção não precisa (e nem deve) subir o arquivo sqlite local.
-- O repositório já ignora: `.venv/`, `instance/`, `*.pdf` e outros arquivos locais.
+OBSERVACOES
+- Em producao nao precisa (e nem deve) subir o arquivo sqlite local.
+- O repositorio ignora `.venv/`, `instance/`, `*.pdf` e outros arquivos locais.
+- Para evitar quebra de script `.sh` no Windows por fim de linha, use `.gitattributes` com LF para scripts.
