@@ -401,7 +401,15 @@
               </div>
             </div>
 
-            <div class="pt-2 flex items-center justify-end">
+            <div class="pt-2 flex items-center justify-between gap-3">
+              <button
+                class="bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg px-4 py-2"
+                type="submit"
+                formaction="{{ url_for('pages.turma_excluir_atividade', turma_id=turma.id, atividade_id=selected_atividade.id) }}"
+                onclick="return confirm('Excluir esta atividade? Esta aÁ„o n„o pode ser desfeita.');"
+              >
+                Excluir atividade
+              </button>
               <button class="bg-gray-900 hover:bg-black text-white font-medium rounded-lg px-4 py-2" type="submit">
                 Salvar configura√ß√£o
               </button>

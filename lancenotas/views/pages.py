@@ -15,6 +15,7 @@ from ..extensions import db
 from ..constants import MAX_TRIMESTRE
 from ..models import (
     Aluno,
+    AvaliacaoAluno,
     Atividade,
     AtividadeAula,
     DiarioAnotacao,
@@ -1053,6 +1054,59 @@ def turma_configurar_atividade(turma_id: int, atividade_id: int):
             trimestre=trimestre,
             atividade_id=atividade.id,
             aula=aula_num,
+        )
+    )
+
+
+@pages_bp.post("/turmas/<int:turma_id>/atividades/<int:atividade_id>/excluir")
+@login_required
+def turma_excluir_atividade(turma_id: int, atividade_id: int):
+    turma = Turma.query.filter_by(id=turma_id, professor_id=int(current_user.id)).first()
+    if turma is None:
+        return redirect(url_for("pages.turmas"))
+
+    atividade = Atividade.query.filter_by(id=atividade_id, turma_id=turma.id).first()
+    if atividade is None:
+        return redirect(url_for("pages.turma_detail", turma_id=turma_id, tab="atividades"))
+
+    trimestre = max(1, min(MAX_TRIMESTRE, _safe_int(request.form.get("trimestre"), atividade.trimestre or 1)))
+    aula_num = max(1, _safe_int(request.form.get("aula"), 1))
+
+    aulas = AtividadeAula.query.filter_by(atividade_id=atividade.id).all()
+    aulas_ids = [int(a.id) for a in aulas]
+    has_lancamentos = False
+    if aulas_ids:
+        has_lancamentos = (
+            LancamentoAulaAluno.query.filter(LancamentoAulaAluno.aula_id.in_(aulas_ids)).first()
+            is not None
+        )
+
+    if has_lancamentos:
+        return redirect(
+            url_for(
+                "pages.turma_detail",
+                turma_id=turma_id,
+                tab="atividades",
+                trimestre=trimestre,
+                atividade_id=atividade.id,
+                aula=aula_num,
+                error="Não é possível excluir a atividade: já existem notas/lançamentos.",
+            )
+        )
+
+    AvaliacaoAluno.query.filter_by(atividade_id=atividade.id).delete(synchronize_session=False)
+    if aulas_ids:
+        LancamentoAulaAluno.query.filter(LancamentoAulaAluno.aula_id.in_(aulas_ids)).delete(synchronize_session=False)
+    AtividadeAula.query.filter_by(atividade_id=atividade.id).delete(synchronize_session=False)
+    db.session.delete(atividade)
+    db.session.commit()
+
+    return redirect(
+        url_for(
+            "pages.turma_detail",
+            turma_id=turma_id,
+            tab="atividades",
+            trimestre=trimestre,
         )
     )
 
