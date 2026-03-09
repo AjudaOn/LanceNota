@@ -1272,43 +1272,102 @@ def turma_importar_alunos_pdf(turma_id: int):
         except OSError:
             pass
 
-    existing_names = {
-        a.nome_completo.strip().lower()
-        for a in Aluno.query.filter_by(turma_id=turma_id).all()
-        if a.nome_completo
-    }
-
-    created = 0
-    for s in students:
-        name_key = s.nome.strip().lower()
-        if not name_key or name_key in existing_names:
-            continue
-        estudante = Estudante(
-            nome_completo=s.nome,
-            matricula=None,
-        )
-        db.session.add(estudante)
-        db.session.flush()
-        aluno = Aluno(
-            turma_id=turma_id,
-            estudante_id=estudante.id,
-            nome_completo=s.nome,
-            numero_chamada=s.numero_chamada,
-            status="ativo",
-        )
-        db.session.add(aluno)
-        existing_names.add(name_key)
-        created += 1
-
-    db.session.commit()
-
-    # Basic mismatch check (only if we could parse turma info from PDF)
     def _norm_text(value: str) -> str:
         normalized = unicodedata.normalize("NFKD", value)
         normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
         normalized = re.sub(r"\s+", " ", normalized).strip().lower()
         return normalized
 
+    # Build roster maps for sync import (add/reactivate/mark removed).
+    alunos_turma = Aluno.query.filter_by(turma_id=turma_id).all()
+    ativos_by_name: dict[str, Aluno] = {}
+    inativos_by_name: dict[str, list[Aluno]] = {}
+    for aluno in alunos_turma:
+        name_key = _norm_text(aluno.nome_completo or "")
+        if not name_key:
+            continue
+        if aluno.status == "ativo":
+            ativos_by_name[name_key] = aluno
+        else:
+            inativos_by_name.setdefault(name_key, []).append(aluno)
+
+    # Reuse existing global student identity whenever possible.
+    other_alunos = (
+        db.session.query(Aluno)
+        .join(Turma, Aluno.turma_id == Turma.id)
+        .filter(
+            Turma.professor_id == int(current_user.id),
+            Turma.ano_letivo == int(turma.ano_letivo or 2026),
+            Aluno.turma_id != int(turma.id),
+            Aluno.estudante_id.isnot(None),
+        )
+        .all()
+    )
+    estudante_id_by_name: dict[str, int] = {}
+    for aluno in other_alunos:
+        name_key = _norm_text(aluno.nome_completo or "")
+        if not name_key or aluno.estudante_id is None:
+            continue
+        estudante_id_by_name.setdefault(name_key, int(aluno.estudante_id))
+
+    created = 0
+    reactivated = 0
+    moved_out = 0
+    imported_names: set[str] = set()
+    for idx, s in enumerate(students, start=1):
+        name_key = _norm_text(s.nome or "")
+        if not name_key:
+            continue
+        imported_names.add(name_key)
+
+        numero_chamada = s.numero_chamada if s.numero_chamada is not None else idx
+        ativo_existente = ativos_by_name.get(name_key)
+        if ativo_existente is not None:
+            ativo_existente.nome_completo = s.nome
+            ativo_existente.numero_chamada = numero_chamada
+            continue
+
+        inativos_mesmo_nome = inativos_by_name.get(name_key) or []
+        if inativos_mesmo_nome:
+            aluno = sorted(inativos_mesmo_nome, key=lambda a: a.created_at or datetime.min, reverse=True)[0]
+            aluno.status = "ativo"
+            aluno.nome_completo = s.nome
+            aluno.numero_chamada = numero_chamada
+            ativos_by_name[name_key] = aluno
+            reactivated += 1
+            continue
+
+        estudante_id = estudante_id_by_name.get(name_key)
+        if estudante_id is None:
+            estudante = Estudante(
+                nome_completo=s.nome,
+                matricula=None,
+            )
+            db.session.add(estudante)
+            db.session.flush()
+            estudante_id = int(estudante.id)
+
+        db.session.add(
+            Aluno(
+                turma_id=turma_id,
+                estudante_id=estudante_id,
+                nome_completo=s.nome,
+                numero_chamada=numero_chamada,
+                status="ativo",
+            )
+        )
+        created += 1
+
+    # Mark as inactive anyone missing from current PDF list.
+    # If the student appears again in future imports, the record is reactivated.
+    for name_key, aluno in ativos_by_name.items():
+        if name_key not in imported_names:
+            aluno.status = "inativo"
+            moved_out += 1
+
+    db.session.commit()
+
+    # Basic mismatch check (only if we could parse turma info from PDF)
     mismatch_fields: list[str] = []
     if info.serie and turma.serie and _norm_text(info.serie) != _norm_text(turma.serie):
         mismatch_fields.append("serie")
@@ -1340,6 +1399,8 @@ def turma_importar_alunos_pdf(turma_id: int):
             turma_id=turma_id,
             tab=tab,
             imported=created,
+            reactivated=reactivated,
+            moved_out=moved_out,
             import_status=("ok_mismatch" if mismatch_fields else "ok"),
             import_mismatch=",".join(mismatch_fields) if mismatch_fields else "",
         )
