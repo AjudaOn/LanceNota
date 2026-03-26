@@ -817,6 +817,10 @@ def turma_detail(turma_id: int):
         error=(request.args.get("error") or "").strip(),
         transfer_ok=(request.args.get("transfer_ok") or "").strip(),
         imported=request.args.get("imported"),
+        reactivated=request.args.get("reactivated"),
+        moved_out=request.args.get("moved_out"),
+        import_parsed=request.args.get("import_parsed"),
+        import_expected=request.args.get("import_expected"),
         import_status=request.args.get("import_status"),
         import_mismatch=(request.args.get("import_mismatch") or "").strip(),
         turmas_destino=turmas_destino,
@@ -1290,6 +1294,31 @@ def turma_importar_alunos_pdf(turma_id: int):
             ativos_by_name[name_key] = aluno
         else:
             inativos_by_name.setdefault(name_key, []).append(aluno)
+
+    # Defensive guard: if parsing returns a suspiciously small roster compared to
+    # current active students, abort sync to avoid accidental mass inactivation.
+    parsed_names: set[str] = set()
+    for s in students:
+        key = _norm_text(s.nome or "")
+        if key:
+            parsed_names.add(key)
+    ativos_count = len(ativos_by_name)
+    parsed_count = len(parsed_names)
+    if parsed_count == 0:
+        return redirect(url_for("pages.turma_detail", turma_id=turma_id, tab=tab, import_status="parse_error"))
+    if ativos_count >= 10:
+        min_expected = max(5, int(ativos_count * 0.6))
+        if parsed_count < min_expected:
+            return redirect(
+                url_for(
+                    "pages.turma_detail",
+                    turma_id=turma_id,
+                    tab=tab,
+                    import_status="partial_parse",
+                    import_parsed=parsed_count,
+                    import_expected=ativos_count,
+                )
+            )
 
     # Reuse existing global student identity whenever possible.
     other_alunos = (

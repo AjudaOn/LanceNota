@@ -51,16 +51,29 @@
 
   {% if import_status == "ok" %}
     <div class="mb-6 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
-      Importação concluída: {{ imported or 0 }} aluno(s) adicionados.
+      Importação concluída:
+      {{ imported or 0 }} novo(s),
+      {{ reactivated or 0 }} reativado(s),
+      {{ moved_out or 0 }} marcado(s) como inativo(s).
     </div>
   {% elif import_status == "ok_mismatch" %}
     <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3 text-sm">
-      Importação concluída ({{ imported or 0 }} aluno(s)). Atenção: o PDF pode ser de outra turma.
+      Importação concluída:
+      {{ imported or 0 }} novo(s),
+      {{ reactivated or 0 }} reativado(s),
+      {{ moved_out or 0 }} marcado(s) como inativo(s).
+      Atenção: o PDF pode ser de outra turma.
       {% if import_mismatch %}
         <div class="mt-1 text-xs text-amber-800/90">
           Divergências detectadas: {{ import_mismatch.replace(",", ", ") }}.
         </div>
       {% endif %}
+    </div>
+  {% elif import_status == "partial_parse" %}
+    <div class="mb-6 rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+      Importação cancelada por segurança: o PDF retornou poucos alunos
+      ({{ import_parsed or 0 }} lidos para {{ import_expected or 0 }} ativo(s) na turma).
+      Nenhum aluno foi alterado.
     </div>
   {% elif import_status == "missing" %}
     <div class="mb-6 rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
